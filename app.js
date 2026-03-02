@@ -49,7 +49,7 @@ app.options("*", cors());
 // app.options("*", cors(corsOptions));
 
 // Define API routes
-app.use('/api/v1', router);
+app.use('/api/v3', router);
 
 
 app.use('/api/v1/test', statusRoutes);
