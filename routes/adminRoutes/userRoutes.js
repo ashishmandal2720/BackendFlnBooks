@@ -5,10 +5,19 @@ const { getUsers,
     updateUser,
     deleteUser,
     updatePassword,
+    resetPassword
 
 } = require('../../controllers/userController');
 const { authenticate, checkRole } = require('../../middlewares/authMiddleware');
-const { getVerfiedUsersCount } = require('../../controllers/admin/DashboardController');
+const { 
+    getVerfiedUsersCount, 
+    getVerfiedUserStats, 
+    getVerfiedUserStatsList,
+    getUnscannedBookSchList,
+    getUnscannedBookClusterList,
+    getScannedBookSchList,
+    getNotReceivedBookSchList
+ } = require('../../controllers/admin/DashboardController');
 
 const router = express.Router();
 
@@ -19,5 +28,16 @@ router.put("/:id",authenticate, checkRole(['Admin']), updateUser);
 router.delete("/:id",authenticate, checkRole(['Admin']), deleteUser);
 router.post("/update-password",authenticate, updatePassword);
 router.get("/verified-count", getVerfiedUsersCount);
+router.get("/verified-stats", getVerfiedUserStats);
+router.get("/verified-stats-list", getVerfiedUserStatsList);
+router.post("/un-scanned-book-sch",authenticate, getUnscannedBookSchList);
+router.post("/un-scanned-book-cls",authenticate, getUnscannedBookClusterList);
+router.post("/scan-book-sch",authenticate, getScannedBookSchList);
+router.post("/not-received-book-sch",authenticate, getNotReceivedBookSchList);
+
+
+
+router.post("/reset-password", resetPassword);
+
 
 module.exports = router;

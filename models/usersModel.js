@@ -18,7 +18,37 @@ const createUserTable = async () => {
             status VARCHAR(20) DEFAULT 'Pending',
             approved_by INTEGER REFERENCES mst_users(user_id),
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );`;
+        );
+
+        CREATE TABLE IF NOT EXISTS public.mst_cac_insert_history (
+  id SERIAL PRIMARY KEY,
+  cluster_cd BIGINT UNIQUE,
+  inserted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+        CREATE TABLE IF NOT EXISTS public.mst_deo_insert_history (
+  id SERIAL PRIMARY KEY,
+  district_cd BIGINT UNIQUE,
+  inserted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS public.mst_beo_insert_history (
+  id SERIAL PRIMARY KEY,
+  block_cd BIGINT UNIQUE,
+  inserted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+        CREATE TABLE IF NOT EXISTS public.mst_programmer_insert_history (
+  id SERIAL PRIMARY KEY,
+  district_cd BIGINT ,
+  inserted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+        CREATE TABLE IF NOT EXISTS public.mst_directors_insert_history (
+  id SERIAL PRIMARY KEY,
+  division_id BIGINT ,
+  inserted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+        `;
   await pool.query(query);
 };
 

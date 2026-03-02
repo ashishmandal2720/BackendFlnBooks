@@ -283,6 +283,121 @@ const getHighSchoolsByUdise = async (req, res) => {
   }
 };
 
+// const getClusterWiseSchools = async (req, res) => {
+//   const { udise_sch_code } = req.body;
+
+//   if (!udise_sch_code) {
+//     return res
+//       .status(400)
+//       .json({ success: false, message: "udise_sch_code is required" });
+//   }
+
+//   const query = `
+//     SELECT 
+//       ms.udise_sch_code,
+//       ms.school_name,
+//       ms.district_cd,
+//       ms.district_name,
+//       ms.block_cd,
+//       ms.block_name,
+//       ms.cluster_cd,
+//       ms.cluster_name,
+//       ms.sch_category_id,
+//       ms.sch_type_id,
+//       ms.sch_mgmt_id,
+//       COALESCE(cs.cls1t, 0) AS cls1t,
+//       COALESCE(cs.cls2t, 0) AS cls2t,
+//       COALESCE(cs.cls3t, 0) AS cls3t,
+//       COALESCE(cs.cls4t, 0) AS cls4t,
+//       COALESCE(cs.cls5t, 0) AS cls5t,
+//       COALESCE(cs.cls6t, 0) AS cls6t,
+//       COALESCE(cs.cls7t, 0) AS cls7t,
+//       COALESCE(cs.cls8t, 0) AS cls8t,
+//       COALESCE(cs.cls1t, 0) + COALESCE(cs.cls2t, 0) + COALESCE(cs.cls3t, 0)+ COALESCE(cs.cls4t, 0)+ COALESCE(cs.cls5t, 0)+ COALESCE(cs.cls6t, 0)+ COALESCE(cs.cls7t, 0)+ COALESCE(cs.cls8t, 0) AS total_student
+//     FROM mst_schools ms
+//     LEFT JOIN central_student_counts cs ON ms.udise_sch_code = cs.udise_sch_code
+//     WHERE ms.udise_sch_code = $1
+//   `;
+
+//   try {
+//     const result = await pool.query(query, [udise_sch_code]);
+
+//     if (result.rows.length === 0) {
+//       return res
+//         .status(404)
+//         .json({ success: false, message: "School not found" });
+//     }
+
+//     res.status(200).json({
+//       success: true,
+//       message: "Data received successfully",
+//       data: result.rows[0],
+//     });
+//   } catch (err) {
+//     console.error("Error fetching school data:", err);
+//     res.status(500).json({ success: false, message: "Internal server error" });
+//   }
+// };
+
+// const getClusterWiseSchools = async (req, res) => {
+//   const { udise_sch_code } = req.body;
+
+//   if (!udise_sch_code) {
+//     return res
+//       .status(400)
+//       .json({ success: false, message: "udise_sch_code is required" });
+//   }
+
+//   const query = `
+//   SELECT 
+//       ms.udise_sch_code,
+//       ms.school_name,
+//       ms.district_cd,
+//       ms.district_name,
+//       ms.block_cd,
+//       ms.block_name,
+//       ms.cluster_cd,
+//       ms.cluster_name,
+//       ms.sch_category_id,
+//       ms.sch_type_id,
+//       ms.sch_mgmt_id,
+//       COALESCE(sc.class_1, 0) AS cls1t,
+//       COALESCE(sc.class_2, 0) AS cls2t,
+//       COALESCE(sc.class_3, 0) AS cls3t,
+//       COALESCE(sc.class_4, 0) AS cls4t,
+//       COALESCE(sc.class_5, 0) AS cls5t,
+//       COALESCE(sc.class_6, 0) AS cls6t,
+//       COALESCE(sc.class_7, 0) AS cls7t,
+//       COALESCE(sc.class_8, 0) AS cls8t,
+//       COALESCE(sc.class_1, 0) + COALESCE(sc.class_2, 0) + COALESCE(sc.class_3, 0) + 
+//       COALESCE(sc.class_4, 0) + COALESCE(sc.class_5, 0) + COALESCE(sc.class_6, 0) + 
+//       COALESCE(sc.class_7, 0) + COALESCE(sc.class_8, 0) AS total_student
+//     FROM mst_schools ms
+//     LEFT JOIN cluster_student_count sc ON ms.udise_sch_code = sc.udise_sch_code
+//     WHERE ms.udise_sch_code = $1
+//   `;
+
+//   try {
+//     const result = await pool.query(query, [udise_sch_code]);
+
+//     if (result.rows.length === 0) {
+//       return res
+//         .status(404)
+//         .json({ success: false, message: "School not found" });
+//     }
+
+//     res.status(200).json({
+//       success: true,
+//       message: "Data received successfully",
+//       data: result.rows[0],
+//     });
+//   } catch (err) {
+//     console.error("Error fetching school data:", err);
+//     res.status(500).json({ success: false, message: "Internal server error" });
+//   }
+// };
+
+
 const getClusterWiseSchools = async (req, res) => {
   const { udise_sch_code } = req.body;
 
@@ -293,38 +408,59 @@ const getClusterWiseSchools = async (req, res) => {
   }
 
   const query = `
-    SELECT 
-      ms.udise_sch_code,
-      ms.school_name,
-      ms.district_cd,
-      ms.district_name,
-      ms.block_cd,
-      ms.block_name,
-      ms.cluster_cd,
-      ms.cluster_name,
-      ms.sch_category_id,
-      ms.sch_type_id,
-      ms.sch_mgmt_id,
-      COALESCE(cs.cls1t, 0) AS cls1t,
-      COALESCE(cs.cls2t, 0) AS cls2t,
-      COALESCE(cs.cls3t, 0) AS cls3t,
-      COALESCE(cs.cls4t, 0) AS cls4t,
-      COALESCE(cs.cls5t, 0) AS cls5t,
-      COALESCE(cs.cls6t, 0) AS cls6t,
-      COALESCE(cs.cls7t, 0) AS cls7t,
-      COALESCE(cs.cls8t, 0) AS cls8t,
-      COALESCE(cs.cls1t, 0) + COALESCE(cs.cls2t, 0) + COALESCE(cs.cls3t, 0)+ COALESCE(cs.cls4t, 0)+ COALESCE(cs.cls5t, 0)+ COALESCE(cs.cls6t, 0)+ COALESCE(cs.cls7t, 0)+ COALESCE(cs.cls8t, 0) AS total_student
-    FROM mst_schools ms
-    LEFT JOIN central_student_counts cs ON ms.udise_sch_code = cs.udise_sch_code
-    WHERE ms.udise_sch_code = $1
+WITH aggregated_students AS (
+  SELECT
+    udise_sch_code,
+    SUM(COALESCE(class_1, 0)) AS class_1,
+    SUM(COALESCE(class_2, 0)) AS class_2,
+    SUM(COALESCE(class_3, 0)) AS class_3,
+    SUM(COALESCE(class_4, 0)) AS class_4,
+    SUM(COALESCE(class_5, 0)) AS class_5,
+    SUM(COALESCE(class_6, 0)) AS class_6,
+    SUM(COALESCE(class_7, 0)) AS class_7,
+    SUM(COALESCE(class_8, 0)) AS class_8
+  FROM cluster_student_count
+  GROUP BY udise_sch_code
+)
+
+SELECT 
+    ms.udise_sch_code,
+    ms.school_name,
+    ms.district_cd,
+    ms.district_name,
+    ms.block_cd,
+    ms.block_name,
+    ms.cluster_cd,
+    ms.cluster_name,
+    ms.sch_category_id,
+    ms.sch_type_id,
+    ms.sch_mgmt_id,
+COALESCE(sc.class_1, '0')::INTEGER AS cls1t,
+COALESCE(sc.class_2, '0')::INTEGER AS cls2t,
+COALESCE(sc.class_3, '0')::INTEGER AS cls3t,
+COALESCE(sc.class_4, '0')::INTEGER AS cls4t,
+COALESCE(sc.class_5, '0')::INTEGER AS cls5t,
+COALESCE(sc.class_6, '0')::INTEGER AS cls6t,
+COALESCE(sc.class_7, '0')::INTEGER AS cls7t,
+COALESCE(sc.class_8, '0')::INTEGER AS cls8t,
+
+-- Total
+COALESCE(sc.class_1, '0')::INTEGER + COALESCE(sc.class_2, '0')::INTEGER +
+COALESCE(sc.class_3, '0')::INTEGER + COALESCE(sc.class_4, '0')::INTEGER +
+COALESCE(sc.class_5, '0')::INTEGER + COALESCE(sc.class_6, '0')::INTEGER +
+COALESCE(sc.class_7, '0')::INTEGER + COALESCE(sc.class_8, '0')::INTEGER AS total_student
+FROM mst_schools ms
+LEFT JOIN aggregated_students sc ON ms.udise_sch_code = sc.udise_sch_code
+WHERE ms.udise_sch_code = $1;
   `;
+  
 
   try {
     const result = await pool.query(query, [udise_sch_code]);
 
     if (result.rows.length === 0) {
       return res
-        .status(404)
+        .status(200)
         .json({ success: false, message: "School not found" });
     }
 
@@ -912,6 +1048,41 @@ const scannedBooksCount = async (req, res) => {
   }
 };
 
+const getSubjectByUdise= async (req, res) => {
+  try {
+    const { udise_sch_code } = req.body;
+
+    if (!udise_sch_code) {
+      return res.status(400).json({ message: "udise_sch_code is required" });
+    }
+
+    // Step 1: Get sector_id from vtp_student_data
+    const sectorQuery = await pool.query(
+      `SELECT sector_id FROM public.vtp_student_data WHERE udise_sch_code = $1`,
+      [udise_sch_code]
+    );
+
+    if (sectorQuery.rows.length === 0) {
+      return res.status(404).json({ message: "School not found or sector_id missing" });
+    }
+
+    const { sector_id } = sectorQuery.rows[0];
+
+    // Step 2: Fetch subjects related to sector_id
+    const subjectQuery = await pool.query(
+      `SELECT * FROM public.mst_subjects WHERE sector_id = $1`,
+      [sector_id]
+    );
+
+    return res.status(200).json({
+      sector_id,
+      data: subjectQuery.rows,
+    });
+
+  } catch (err) {
+    console.error('Error:', err);
+    res.status(500).json({ message: "Server error", error: err.message });
+  }};
 
 module.exports = {
   getPrivateSchoolsByDepot,
@@ -923,5 +1094,6 @@ module.exports = {
   getSchoolByCluster,
   getClusterWiseSchools,
   scannedBooksCount,
+  getSubjectByUdise
   // getAllSchoolList
 };

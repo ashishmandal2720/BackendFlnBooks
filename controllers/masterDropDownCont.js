@@ -129,7 +129,7 @@ const getAllDeoList = async (req, res) => {
     if (conditions.length > 0) {
       baseQuery += " WHERE " + conditions.join(" AND ");
     }
-    console.log("baseQuery", baseQuery);
+    // console.log("baseQuery", baseQuery);
     const result = await pool.query(baseQuery, values);
     responseHandler(res, 200, 'Deo data fetched', result.rows, null, result.rowCount);
   } catch (error) {
@@ -220,8 +220,30 @@ const getClass = async (req, res) => {
   }
 };
 
+const getDesignationDropdown = async (req, res) => {
+    /* #swagger.tags = ['Teachers'] */
+    /* #swagger.security = [{'Bearer': []}] */
+    /* #swagger.description = 'Get distinct designations from teachers table for dropdown' */
+    try {
+        // Get only non-null designations and exclude empty values
+        const result = await pool.query(`
+            SELECT DISTINCT 
+                designation_id, 
+                designation_name_eng 
+            FROM mst_teacher 
+            WHERE designation_id IS NOT NULL 
+            AND designation_name_eng IS NOT NULL
+            AND designation_name_eng != ''
+            ORDER BY designation_name_eng
+        `);
+        
+        responseHandler(res, 200, 'Designations fetched successfully', result.rows);
+    } catch (error) {
+        responseHandler(res, 400, 'Error fetching designations', null, error);
+    }
+};
 
 
 module.exports = { getDistrictData, getBlockData, getClusterData, getAllMedium,getAllDeoList,getAllCacList,
-  getDivision, getClass,getDepotData
+  getDivision, getClass,getDepotData,getDesignationDropdown
  };

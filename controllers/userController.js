@@ -5,7 +5,7 @@ const responseHandler = require('../utils/responseHandler');
 const getUsers = async (req, res) => {
   /* #swagger.tags = ['Users'] */
   /* #swagger.security = [{"Bearer": []}] */
-  const users = await pool.query('SELECT user_id, name, email, role_id, status FROM mst_users ORDER BY created_at DESC');
+  const users = await pool.query('SELECT user_id, name, email, role_id, status FROM mst_users where role_id not in (4,5,6,7,8,9,10) ORDER BY created_at DESC');
   responseHandler(res, 200, 'Users fetched', users.rows);
 };
 
@@ -124,4 +124,47 @@ const updatePassword = async (req, res) => {
   };
 }
 
-module.exports = { getUsers, approveUser, addUser,deleteUser,updateUser,updatePassword};
+
+const resetPassword = async (req, res) => {
+  /* #swagger.tags = ['Users'] */
+   /* #swagger.security = [{"Bearer": []}] */
+
+  try {
+    const { identifier, newPassword } = req.body;
+    if (!identifier || !newPassword) {
+      // return responseHandler(res, 400, 'Email or Contact Number and new password are required');
+      return res.status(400).json({ success: false, message: 'Email/Employee ID or Contact Number and new password are required' });
+    }
+
+    // Find user by email or contact_number
+    const userResult = await pool.query(
+      'SELECT user_id FROM mst_users WHERE email = $1 OR contact_number = $1',
+      [identifier]
+    );
+
+    if (!userResult.rows.length) {
+      // return responseHandler(res, 404, 'User not found with provided Email/EmployeeID or Contact Number');
+      return res.status(404).json({ success: false, message: 'User not found with provided Email/EmployeeID or Contact Number' });
+    }
+
+    const user = userResult.rows[0];
+    const hashedPassword = await bcrypt.hash(newPassword, 12);
+
+    // Update password
+    await pool.query(
+      'UPDATE mst_users SET password = $1 WHERE user_id = $2',
+      [hashedPassword, user.user_id]
+    );
+
+  //   responseHandler(res, 200, 'Password reset successfully');
+  // } catch (error) {
+  //   responseHandler(res, 400, 'Error resetting password', null, error);
+  // }
+
+     res.status(200).json({ success: true, message: 'Password reset successfully' });
+  } catch (error) {
+    res.status(400).json({ success: false, message: 'Error resetting password', error: error.message });
+  }
+};
+
+module.exports = { getUsers, approveUser, addUser,deleteUser,updateUser,updatePassword,resetPassword};

@@ -39,6 +39,18 @@ ORDER BY ms.created_at DESC`);
         responseHandler(res, 400, 'Error fetching subjects', null, error);
     }
 };
+const getSubjectsForCluster = async (req, res) => {
+    /* #swagger.tags = ['Subjects'] */
+    /* #swagger.security = [{'Bearer': []}] */
+    try {
+        const result = await pool.query(`SELECT ms.*,m.medium_name FROM mst_subjects as ms  
+    JOIN mst_medium m ON ms.medium::int = m.medium_cd and class_level in ('1','2','3','4','5','6','7','8')
+ORDER BY  ms.class_level asc`);
+        responseHandler(res, 200, 'Subjects fetched', result.rows);
+    } catch (error) {
+        responseHandler(res, 400, 'Error fetching subjects', null, error);
+    }
+};
 
 
 // Get All Subjects For Order
@@ -242,4 +254,4 @@ const xmlImportData = async (req, res) => {
     }
 }
 
-module.exports = { addSubject, xmlImportData, getSubjects, getSubjectById, getSubjectByClass, updateSubject, deleteSubject, getSubjectByDistrict, getSubjectsForOrder, getSubjectsForAssignPublisher };
+module.exports = { addSubject, xmlImportData, getSubjects, getSubjectById, getSubjectByClass, updateSubject, deleteSubject, getSubjectByDistrict, getSubjectsForOrder, getSubjectsForAssignPublisher ,getSubjectsForCluster };

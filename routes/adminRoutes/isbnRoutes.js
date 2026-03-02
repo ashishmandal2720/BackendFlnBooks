@@ -1,5 +1,5 @@
 const express = require("express");
-const { generateISBN, getISBNByAssignment, generateBarcode, downloadISBNPdf, getISBNDetails } = require("../../controllers/admin/isbnController");
+const { generateISBN, getISBNByAssignment, generateBarcode, downloadISBNPdf, getISBNDetails,getISBNDetailsOLD } = require("../../controllers/admin/isbnController");
 const { checkRole, authenticate } = require("../../middlewares/authMiddleware");
 
 const router = express.Router();
@@ -10,5 +10,8 @@ router.get("/:assignment_id",authenticate,checkRole(['Admin']), getISBNByAssignm
 router.get("/barcode/:assignment_id",authenticate,checkRole(['Admin']), generateBarcode);
 router.get("/download/:assignment_id",authenticate,checkRole(['Admin']), downloadISBNPdf);
 router.get("/getISBNDetails/:isbn_code", getISBNDetails);
+router.get("/getISBNDetailsOLD/:isbn_code", getISBNDetailsOLD);
+
+
 
 module.exports = router;

@@ -38,7 +38,7 @@ const doc = {
     title: "Text Book Corporation",
     termsOfService: "http://vsk.cg.gov.in/",
     contact:{
-      email: "developer.anubhav@gmail.com"
+      email: "iitbhilai100@gmail.com"
     },
     license:{
       name: "Apache 2.0",

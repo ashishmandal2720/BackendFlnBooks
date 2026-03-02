@@ -10,7 +10,8 @@ const {
   getSubjectByClass,
   xmlImportData,
   getSubjectsForAssignPublisher,
-  getSubjectsForOrder
+  getSubjectsForOrder,
+  getSubjectsForCluster
 } = require("../../controllers/admin/subjectsController");
 const { authenticate, checkRole } = require("../../middlewares/authMiddleware");
 
@@ -59,8 +60,10 @@ router.post("/upload", upload.single("file"), xmlImportData);
 router.post("/", authenticate, addSubject);
 router.get("/publisher", authenticate, getSubjectsForAssignPublisher);
 router.get("/order", authenticate, getSubjectsForOrder);
-router.get("/", authenticate, getSubjects);
-router.get("/:id",  getSubjectById);
+router.get("/", authenticate, getSubjects)
+router.get("/cluster-subject", authenticate,getSubjectsForCluster );
+router.get("/:id", authenticate, getSubjectById);
+router.get("/class/:class_id", authenticate, getSubjectByClass);
 router.put("/:id", authenticate, checkRole(['Admin']), updateSubject);
 router.delete("/:id", authenticate, checkRole(['Admin']), deleteSubject);
 

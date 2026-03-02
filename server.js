@@ -1,5 +1,4 @@
 const { createDatabaseIfNotExists } = require('./config/dbsetup');
-require('./utils/cron/challanJob'); // start cron
 (async () => {
   const dbReady = await createDatabaseIfNotExists();
   if (dbReady) {

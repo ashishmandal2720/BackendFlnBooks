@@ -2,7 +2,6 @@ const bwipjs = require("bwip-js");
 const PDFDocument = require("pdfkit");
 const fs = require("fs");
 const { pool } = require("../../config/db");
-
 const calculateISBNChecksum = (isbnWithoutChecksum) => {
   let sum = 0;
   for (let i = 0; i < 12; i++) {
@@ -73,7 +72,7 @@ const generateISBN = async (req, res) => {
       "SELECT * FROM tbc_subject_assignments WHERE id = $1",
       [assignmentNumber]
     );
-
+    
     if (assignment.rows.length === 0) {
       return res.status(404).json({ message: "Assignment not found" });
     }
@@ -127,6 +126,8 @@ const getISBNByAssignment = async (req, res) => {
 const generateBarcode = async (res, assignment_id, data) => {
   /* #swagger.tags = ['ISBN'] */
   /* #swagger.security = [{"Bearer": []}] */
+  console.log("qwertyuio");
+  
   try {
 
     // Fetch ISBN from DB
@@ -138,14 +139,27 @@ const generateBarcode = async (res, assignment_id, data) => {
     const isbnCode = isbnData.rows[0].isbn_code;
 
     // Generate barcode
+    // bwipjs.toBuffer(
+    //   {
+    //     bcid: "ean13",
+    //     text: isbnCode,
+    //     scale: 3,
+    //     height: 25,
+    //     includetext: true,
+    //     textxalign: "center",
+    //   },
+
     bwipjs.toBuffer(
       {
-        bcid: "ean13",
+        bcid: "code128",
         text: isbnCode,
         scale: 3,
         height: 25,
         includetext: true,
         textxalign: "center",
+        // barcolor:"ff0000",
+        // backgroundcolor:"ffffff",
+        // textcolor:"000000"
       },
       async (err, png) => {
         if (err) {
@@ -203,7 +217,6 @@ const downloadISBNPdf = async (req, res) => {
   }
 };
 
-
 const getISBNDetails = async (req, res) => {
   /* #swagger.tags = ['ISBN'] */
   /* #swagger.security = [{"Bearer": []}] */
@@ -229,4 +242,30 @@ const getISBNDetails = async (req, res) => {
   }
 };
 
-module.exports = { generateISBN, getISBNByAssignment, generateBarcode, downloadISBNPdf ,getISBNDetails };
+
+const getISBNDetailsOLD = async (req, res) => {
+  /* #swagger.tags = ['ISBN'] */
+  /* #swagger.security = [{"Bearer": []}] */
+  try {
+    const { isbn_code } = req.params;
+
+    const result = await pool.query(
+      `SELECT book.id, book.isbn_code,u.name as publisher_name, sub.name as subject_name, sub.class_level, sub.medium
+       FROM tbc_books_old book
+        INNER join mst_users_old u ON book.publisher_id = u.user_id
+        INNER join mst_subjects_old sub ON book.subject_id = sub.id
+        WHERE book.isbn_code = $1`,
+      [isbn_code]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "ISBN not found" });
+    }
+
+    res.status(200).json({success: true,message: "ISBN details fetched successfully", data: result.rows[0]});
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
+module.exports = { generateISBN, getISBNByAssignment, generateBarcode, downloadISBNPdf ,getISBNDetails,getISBNDetailsOLD };

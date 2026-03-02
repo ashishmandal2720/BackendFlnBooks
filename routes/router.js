@@ -20,6 +20,7 @@ const depotCluster = require('./depotRoutes/depotToClustRoutes');
 const depotProfile = require('./depotRoutes/depotProfileRoutes');
 const publisherProfile = require('./publisherRoute/pubProfileRoutes');
 const deoProfile = require('./deoRoutes/deoProfileRoutes');
+const deoTransfer = require('./deoRoutes/deoTransferRoutes');
 const clusterProfile = require('./clusterRoutes/clusterProfileRoutes');
 const clusterOrder = require('./clusterRoutes/clusterOrderRoutes');
 const clusterTchSch = require('./clusterRoutes/clusterTchSchRoutes');
@@ -59,6 +60,7 @@ router.use('/depot/cluster', depotCluster);
 
 //Deo Routes
 router.use('/deo', deoProfile);
+router.use('/deo/transfer', deoTransfer);
 router.use('/deo/order', deoOrders);
 
 //Cluster Routes
@@ -71,9 +73,9 @@ router.use('/school', schoolProfile);
 
 
 router.use('/school', schoolRoutes);
-router.use('/reports', reportRoutes)
+router.use('/reports',reportRoutes)
 //programmer routes
-router.use('/programmer/profile', proProfile);
+router.use('/programmer/profile',proProfile);
 router.use('/programmer', proTchSch);
 
 module.exports = router;

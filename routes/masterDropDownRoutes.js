@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { getDistrictData, getBlockData,getDepotData, getClusterData, getAllMedium, getAllDeoList, getAllCacList, getDivision,getClass
+const { getDistrictData, getBlockData,getDepotData, getClusterData, getAllMedium, getAllDeoList, getAllCacList, getDivision,getClass, getDesignationDropdown
 
 } = require('../controllers/masterDropDownCont');
 
@@ -13,5 +13,6 @@ router.post("/deo-list", getAllDeoList);
 router.post("/cac-list", getAllCacList);
 router.get("/division-list", getDivision);
 router.get("/class-list", getClass);
+router.get("/designation-list", getDesignationDropdown);
 
 module.exports = router;

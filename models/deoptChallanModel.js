@@ -58,10 +58,10 @@ CREATE TABLE IF NOT EXISTS tbc_depot_deo_challan_books (
 
   CREATE TABLE IF NOT EXISTS tbc_depot_cluster_challans (
   id SERIAL PRIMARY KEY,
-  challan_number TEXT,
+  challan_number BIGINT,
   challan_date DATE NOT NULL,
   depot_id INT REFERENCES mst_users(user_id),
-  cluster_id INT REFERENCES mst_users(user_id),
+  cluster_id BIGINT REFERENCES mst_users(user_id),
   total_books INT DEFAULT 0,
   total_weight NUMERIC DEFAULT 0,
   dispatch_status BOOLEAN DEFAULT FALSE,
@@ -72,15 +72,15 @@ CREATE TABLE IF NOT EXISTS tbc_depot_deo_challan_books (
 );
 
 CREATE TABLE IF NOT EXISTS tbc_depot_cluster_challan_books (
-  id SERIAL PRIMARY KEY,
-  challan_id INT REFERENCES tbc_depot_cluster_challans(id) ON DELETE CASCADE,
+  id  SERIAL PRIMARY KEY,
+  challan_id BIGINT REFERENCES tbc_depot_cluster_challans(id) ON DELETE CASCADE,
   book_id INT REFERENCES tbc_books(id),
   sets INT,
   books_per_set INT,
   open_books INT DEFAULT 0,
   book_weight NUMERIC,
   bundle_weight NUMERIC,
-  total_books INT GENERATED ALWAYS AS ((books_per_set * sets) + open_books) STORED,
+  total_books INT ,
   remaining_qty INT NOT NULL,
   received_qty INT DEFAULT 0
 );

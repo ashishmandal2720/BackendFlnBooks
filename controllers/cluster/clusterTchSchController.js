@@ -8,13 +8,13 @@ const getGovTeacher = async (req, res) => {
   const { cluster_id } = req.params;
   const users = await pool.query(`SELECT
   u.*,
-  t.*
+  t.udise_id, t.current_udise_id, t.teacher_code, t.name_hin, t.name_eng, t.designation_id, t.designation_name_eng, t.designation_name_hin, t.mobile_no
 FROM public.mst_users AS u
-JOIN public.mst_teachers AS t
+JOIN public.mst_teacher AS t
   ON t.teacher_code = u.column_value
 JOIN public.mst_schools AS s
   ON s.udise_sch_code = t.current_udise_id
-WHERE u.role_id = 8 and s.cluster_cd = $1
+WHERE u.role_id = 8 and s.cluster_cd = $1::bigint
   AND u.table_name  = 'mst_teacher'
   AND u.column_name = 'teacher_code' ORDER BY created_at DESC`,[cluster_id]);
   responseHandler(res, 200, 'Teachers fetched', users.rows);
@@ -31,7 +31,7 @@ JOIN public.mst_udise_teacher AS t
   ON t.nat_tch_id = u.column_value
 JOIN public.mst_schools AS s
   ON s.udise_sch_code = t.udise_sch_code
-WHERE u.role_id = 10 and s.cluster_cd = $1
+WHERE u.role_id = 10 and s.cluster_cd::bigint = $1::bigint
   AND u.table_name  = 'mst_udise_teacher'
   AND u.column_name = 'nat_tch_id' ORDER BY created_at DESC`,[cluster_id]);
   responseHandler(res, 200, 'Private Teachers fetched', users.rows);
@@ -46,7 +46,7 @@ const getSchools = async (req, res) => {
 FROM public.mst_users AS u
 JOIN public.mst_schools AS t
   ON t.udise_sch_code = u.column_value
-WHERE u.role_id = 10 and t.cluster_cd = $1
+WHERE u.role_id = 10 and t.cluster_cd = $1::bigint
   AND u.table_name  = 'mst_schools'
   AND u.column_name = 'udise_sch_code' ORDER BY created_at DESC`,[cluster_id]);
   responseHandler(res, 200, 'School fetched', users.rows);

@@ -24,6 +24,21 @@ function checkFileType(fileName) {
     }
   }
 // Upload Front or Back Cover
+function checkFileType(fileName) {
+    const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'];
+    const pdfExtension = '.pdf';
+  
+    const lowerFileName = fileName.toLowerCase();
+  
+    if (imageExtensions.some(ext => lowerFileName.includes(ext))) {
+      return 'image';
+    } else if (lowerFileName.includes(pdfExtension)) {
+      return 'pdf';
+    } else {
+      return 'unknown';
+    }
+  }
+// Upload Front or Back Cover
 const uploadCover = async (req, res) => {
     /* #swagger.tags = ['Books'] */
     /* #swagger.security = [{"Bearer": []}] */
@@ -72,7 +87,7 @@ const uploadCover = async (req, res) => {
             [fileUrl, bookNumber]
         );
 
-        res.json({ success:true,message: `${type} cover uploaded`, book: updatedBook.rows[0] });
+        res.json({ success:true,message: `${type} cover uploaded, book: updatedBook.rows[0]` });
     } catch (error) {
         res.status(400).json({ success:false, error: error.message });
     }

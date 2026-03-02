@@ -8,9 +8,7 @@ const { createProgrammersTable } = require('./masterTables/mstProgrammersModel')
 const { createMstBeoTable } = require('./masterTables/mstBeoModel');
 const { createMstCacTable } = require('./masterTables/mstCacModel');
 const { createMstSchoolsTable } = require('./masterTables/mstSchoolsModel');
-const { createPublisherTable } = require('./masterTables/mstPublisherModel');
 const { createMstDepotTable } = require('./masterTables/mstDipotModel');
-const { createSchoolEnrolment } = require('./schoolEnrollmentModel');
 const { createMstTeacher } = require('./masterTables/mstTeacher');
 const { createMstUdiseTeacher } = require('./masterTables/mstUdiseTeacher');
 
@@ -38,9 +36,7 @@ const { createBookAssignTable } = require('./bookAssignModel');
 const { createBarcodeList } = require('./uniqueBarcodesModel');
 const { createChallanTbl } = require('./deoptChallanModel');
 const { createSchBookDistribution } = require('./schBookDistributionModel');
-const { createChallanTable } = require('./challanModel');
-const { createStudentCounts  } = require('./studentCountsModel');
-
+const { createJoinDirectorTable } = require('./masterTables/mstJointDirectorModel');
 
 
 
@@ -67,8 +63,6 @@ const initializeDatabase = async () => {
     await createProgrammersTable();
     await createMstDeoTable();
     await createMstBeoTable();
-    await createPublisherTable();
-    await createSchoolEnrolment();
     await subjectAssignment();
     await createIsbnTable();
     await createBooksTable();
@@ -78,12 +72,9 @@ const initializeDatabase = async () => {
     await createDistrictTable();
     await createBlockTable();
     await createClusterTable();
-    await createPublisherTable();
-    await createSchoolEnrolment();
     await createSchBookDistribution();
     await createMstDivisionTable();
-    await createChallanTable();
-    await createStudentCounts();
+    await createJoinDirectorTable();
 
     // await createFunctionAndTrigger();
 

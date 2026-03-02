@@ -13,9 +13,9 @@ const pool = new Pool({
 const connectDB = async () => {
   try {
     await pool.query('SELECT 1'); // Check if DB is connected
-    console.log('☑️  Database connected successfully');
+    console.log('  Database connected successfully');
   } catch (error) {
-    console.error('❌ Database connection error', error);
+    console.error(' Database connection error', error);
     process.exit(1);
   }
 };
