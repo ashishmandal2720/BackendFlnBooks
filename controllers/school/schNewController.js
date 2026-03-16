@@ -308,7 +308,9 @@ const booksStdCount = async (req, res) => {
       error: error.message
     });
   }
-};const getSubjectWiseStd2 = async (req, res) => {
+};
+
+const getSubjectWiseStd2 = async (req, res) => {
   try {
     const { udise_code, class_level, medium } = req.body;
 
@@ -321,7 +323,7 @@ const booksStdCount = async (req, res) => {
           class_level::int AS class
         FROM mst_subjects
         WHERE class_level::int = $1
-          AND medium IN (4, 19, 14, 18)
+          AND medium IN (1,2)
       ),
       
       tracking_cte AS (
@@ -1309,7 +1311,7 @@ const scanCode = async (req, res) => {
   /* #swagger.tags = ['School Mobile Api'] */
   /* #swagger.security = [{ "Bearer": [] }] */
   try {
-    const teacher_id = 172;
+    const teacher_id = req.user.user_id;
     const { isbn_code, barcode_value, udise_code } = req.body;
 
     if (!isbn_code || !barcode_value || !udise_code) {
@@ -1318,14 +1320,6 @@ const scanCode = async (req, res) => {
 
     // Step 1: Normalize special ISBNs (if needed)
     let final_isbn = isbn_code;
-    if (isbn_code === '9789333000857') {
-      final_isbn = '9789324000859';
-    } else if (isbn_code === '9789371000291') {
-      final_isbn = '9789379001566';
-    } else if (isbn_code === '9789333001571') {
-      final_isbn = '9789329001578';
-    }
-
     // Step 2: Validate ISBN and fetch book_id, subject_id
     const isbnRes = await pool.query(
       `SELECT id AS book_id, subject_id FROM tbc_books WHERE isbn_code = $1`,

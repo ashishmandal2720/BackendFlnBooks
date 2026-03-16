@@ -1048,41 +1048,137 @@ const scannedBooksCount = async (req, res) => {
   }
 };
 
-const getSubjectByUdise= async (req, res) => {
+// const getSubjectByUdise= async (req, res) => {
+//   try {
+//     const { udise_sch_code } = req.body;
+
+//     if (!udise_sch_code) {
+//       return res.status(400).json({ message: "udise_sch_code is required" });
+//     }
+
+//     // Step 1: Get sector_id from vtp_student_data
+//     const sectorQuery = await pool.query(
+//       `SELECT sector_id FROM public.vtp_student_data WHERE udise_sch_code = $1`,
+//       [udise_sch_code]
+//     );
+
+//     if (sectorQuery.rows.length === 0) {
+//       return res.status(404).json({ message: "School not found or sector_id missing" });
+//     }
+
+//     const { sector_id } = sectorQuery.rows[0];
+
+//     // Step 2: Fetch subjects related to sector_id
+//     const subjectQuery = await pool.query(
+//       `SELECT * FROM public.mst_subjects WHERE sector_id = $1`,
+//       [sector_id]
+//     );
+
+//     return res.status(200).json({
+//       sector_id,
+//       data: subjectQuery.rows,
+//     });
+
+//   } catch (err) {
+//     console.error('Error:', err);
+//     res.status(500).json({ message: "Server error", error: err.message });
+//   }};
+
+// const getSubjectByUdise = async (req, res) => {
+//   try {
+//     const { class_level } = req.body;
+
+//     if (!class_level) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "class_level is required",
+//       });
+//     }
+
+//     // Fetch subjects based on class_level
+//     const subjectResult = await pool.query(
+//       `SELECT *
+//        FROM mst_subjects
+//        WHERE class_level = $1
+//        ORDER BY id ASC`,
+//       [class_level]
+//     );
+
+//     return res.status(200).json({
+//       success: true,
+//       class_level: class_level,
+//       total_subjects: subjectResult.rows.length,
+//       data: subjectResult.rows,
+//     });
+
+//   } catch (error) {
+//     console.error("Error in getSubjectByUdise:", error);
+//     return res.status(500).json({
+//       success: false,
+//       message: "Internal Server Error",
+//       error: error.message,
+//     });
+//   }
+// };
+
+const getSubjectByUdise = async (req, res) => {
   try {
-    const { udise_sch_code } = req.body;
+    const { class_level, udise_sch_code } = req.body;
 
-    if (!udise_sch_code) {
-      return res.status(400).json({ message: "udise_sch_code is required" });
+    if (!class_level || !udise_sch_code) {
+      return res.status(400).json({
+        success: false,
+        message: "class_level and udise_sch_code are required",
+      });
     }
 
-    // Step 1: Get sector_id from vtp_student_data
-    const sectorQuery = await pool.query(
-      `SELECT sector_id FROM public.vtp_student_data WHERE udise_sch_code = $1`,
-      [udise_sch_code]
+    // Fetch subjects based on class_level
+    const subjectResult = await pool.query(
+      `SELECT *
+       FROM mst_subjects
+       WHERE class_level::int = $1
+       ORDER BY id ASC`,
+      [class_level]
     );
 
-    if (sectorQuery.rows.length === 0) {
-      return res.status(404).json({ message: "School not found or sector_id missing" });
-    }
-
-    const { sector_id } = sectorQuery.rows[0];
-
-    // Step 2: Fetch subjects related to sector_id
-    const subjectQuery = await pool.query(
-      `SELECT * FROM public.mst_subjects WHERE sector_id = $1`,
-      [sector_id]
+    // Fetch student count for that class
+    const studentResult = await pool.query(
+      `
+      SELECT 
+        CASE 
+          WHEN $2::int = 1 THEN class_1
+          WHEN $2::int = 2 THEN class_2
+          WHEN $2::int = 3 THEN class_3
+          WHEN $2::int = 4 THEN class_4
+          WHEN $2::int = 5 THEN class_5
+          ELSE 0
+        END AS students
+      FROM cluster_student_count
+      WHERE udise_sch_code = $1
+      `,
+      [udise_sch_code, class_level]
     );
+
+    const students = studentResult.rows[0]?.students ?? 0;
 
     return res.status(200).json({
-      sector_id,
-      data: subjectQuery.rows,
+      success: true,
+      udise_sch_code,
+      class_level,
+      student_count: parseInt(students, 10),
+      total_subjects: subjectResult.rows.length,
+      data: subjectResult.rows,
     });
 
-  } catch (err) {
-    console.error('Error:', err);
-    res.status(500).json({ message: "Server error", error: err.message });
-  }};
+  } catch (error) {
+    console.error("Error in getSubjectByUdise:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+      error: error.message,
+    });
+  }
+};
 
 module.exports = {
   getPrivateSchoolsByDepot,

@@ -333,13 +333,13 @@ const confirmSchoolBookReceipt = async (req, res) => {
     // Prepare values for book inserts
     const values = [];
     for (const book of books) {
-      const { book_id, received_qty } = book;
-      if (!book_id || received_qty == null) continue;
+      const { subject_id, received_qty } = book;
+      if (!subject_id || received_qty == null) continue;
 
       values.push([
         challan_id,
         udise_code,
-        book_id,
+        subject_id,
         received_qty, // quantity
         received_qty, // remaining_qty
         received_qty, // received_qty
@@ -353,7 +353,7 @@ const confirmSchoolBookReceipt = async (req, res) => {
 
     const insertQuery = `
       INSERT INTO tbc_school_challan_books 
-        (challan_id, udise_code, book_id, quantity, remaining_qty, received_qty, received_status)
+        (challan_id, udise_code, subject_id, quantity, remaining_qty, received_qty, received_status)
       VALUES 
         ${values.map((_, i) =>
           `($${i * 7 + 1}, $${i * 7 + 2}, $${i * 7 + 3}, $${i * 7 + 4}, $${i * 7 + 5}, $${i * 7 + 6}, $${i * 7 + 7})`
