@@ -1521,8 +1521,7 @@ const buildSqlQuery = (filterData) => {
                 tbc_school_type,
                 total_students,
                 school_name,
-                class_1, class_2, class_3, class_4, class_5,
-                class_6, class_7, class_8, class_9, class_10
+                class_1, class_2, class_3, class_4, class_5
             FROM (
                 ${
                   school_type === "government"
@@ -1536,8 +1535,8 @@ const buildSqlQuery = (filterData) => {
                     sc.tbc_school_type,
                     sc.total_students,
                     sc.school_name,
-                    sc.class_1, sc.class_2, sc.class_3, sc.class_4, sc.class_5,
-                    sc.class_6, sc.class_7, sc.class_8, sc.class_9, sc.class_10
+                    sc.class_1, sc.class_2, sc.class_3, sc.class_4, sc.class_5
+          
                 FROM public.student_counts sc
                 LEFT JOIN mst_schools as mc ON mc.udise_sch_code = sc.school_udise_code::bigint
                 WHERE sc.school_udise_code IS NOT NULL
@@ -1557,12 +1556,11 @@ const buildSqlQuery = (filterData) => {
                     csc.block_cd,
                     csc.cluster_cd,
                     ${schoolTypeMap.government} AS tbc_school_type,
-                    (csc.class_1 + csc.class_2 + csc.class_3 + csc.class_4 + csc.class_5 +
-                     csc.class_6 + csc.class_7 + csc.class_8) AS total_students,
+                    (csc.class_1 + csc.class_2 + csc.class_3 + csc.class_4 + csc.class_5 
+                    ) AS total_students,
                     csc.school_name,
-                    csc.class_1, csc.class_2, csc.class_3, csc.class_4, csc.class_5,
-                    csc.class_6, csc.class_7, csc.class_8,
-                    0 AS class_9, 0 AS class_10
+                    csc.class_1, csc.class_2, csc.class_3, csc.class_4, csc.class_5
+                    
                 FROM public.cluster_student_count csc
                 LEFT JOIN mst_schools as mc ON mc.udise_sch_code = csc.udise_sch_code
                 WHERE csc.udise_sch_code IS NOT NULL

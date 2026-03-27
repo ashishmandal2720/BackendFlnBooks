@@ -88,7 +88,12 @@ const BookDistributionReportDetails = async (req, res) => {
     res.json({ success: true, data });
   } catch (error) {
     console.error('Error fetching report:', error);
-    res.status(500).json({ success: false, message: 'Internal Server Error' });
+    console.error('Error details:', error.message);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error fetching report',
+      error: error.message 
+    });
   }
 };
 const SchoolListReport = async (req, res) => {

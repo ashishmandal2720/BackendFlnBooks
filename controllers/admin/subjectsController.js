@@ -13,16 +13,24 @@ const addSubject = async (req, res) => {
         const { name, class_level, district, book_type, medium } = req.body;
 
         if (!name || !class_level || !medium) {
-            return responseHandler(res, 400, 'All fields are required');
+            return res.status(400).json({
+                success: false,
+                message: 'All fields are required'
+            });
         }
+
 
         const newSubject = await pool.query(
             "INSERT INTO mst_subjects (name, class_level,district_id,book_type,medium) VALUES ($1, $2,$3,$4,$5) RETURNING *",
             [name, class_level, district, book_type, medium]
         );
-        responseHandler(res, 201, 'Subject added successfully', newSubject.rows[0]);
+        res.json({ success: true, data: newSubject.rows[0] });
     } catch (error) {
-        responseHandler(res, 400, 'Error adding subject', null, error);
+        res.status(500).json({
+            success: false,
+            message: 'Error adding subject',
+            error: error.message
+        });
     }
 };
 
