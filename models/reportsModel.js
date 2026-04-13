@@ -29,15 +29,12 @@ WITH total_books AS (
         SELECT
   SUM(
     COALESCE(cls1t, 0) + COALESCE(cls2t, 0) + COALESCE(cls3t, 0) + COALESCE(cls4t, 0) +
-    COALESCE(cls5t, 0) + COALESCE(cls6t, 0) + COALESCE(cls7t, 0) + COALESCE(cls8t, 0) +
-    COALESCE(cls9t, 0) + COALESCE(cls10t, 0) + COALESCE(cls11t, 0) + COALESCE(cls12t, 0)
+    COALESCE(cls5t, 0) 
   ) AS total_students
 FROM central_student_counts),
       school_distributed AS (
-        SELECT SUM(tscb.received_qty) AS total_school_recieved
+        SELECT COALESCE(SUM(tscb.received_qty), 0) AS total_school_recieved
         FROM tbc_school_challan_books tscb
-        JOIN school_data sd ON tscb.udise_code = sd.udise_code::BIGINT
-
       ),
       distributed AS (
         SELECT SUM(CAST(tscb.distributed_qty AS INTEGER)) AS total_distributed
@@ -54,6 +51,7 @@ tbs.total_scanned,sd.total_school_recieved,d.total_distributed,
 COALESCE(tbs.total_scanned, 0) - COALESCE(d.total_distributed, 0) AS scanned_but_not_distributed
 FROM total_students ts, total_books tb, school_count sc,total_scanned tbs,school_distributed sd,distributed d;`;
   const { rows } = await pool.query(query);
+  console.log('getCardCounts result:', rows);
   return rows;
 };
 
@@ -453,7 +451,7 @@ FROM school_distributed sd, distributed d, total_scanned ts,
 //             groupByClause = 'GROUP BY md.depot_cd, md.depot_name';
 //             masterTableJoins.push(`LEFT JOIN public.mst_depot md ON fs.district_cd::INTEGER = ANY (md.district_cds::INTEGER[])`);
 //             orderByClause = 'md.depot_name';
-//             finalSelectTotalSchools = 'COUNT(DISTINCT fs.school_udise_code) AS total_schools,';
+//             finalSelectTotalSchools = 'COUNT(DISTINCT csc_totals.udise_sch_code) AS total_schools,';
 //             finalSelectTotalStudents = (class_level || effectiveClassLevels.length > 0)
 //                 ? `COALESCE(SUM(${effectiveClassLevels.map(cls => `fs.class_${cls}`).join(' + ')}), 0) AS total_students`
 //                 : 'COALESCE(SUM(fs.total_students), 0) AS total_students';
@@ -466,7 +464,7 @@ FROM school_distributed sd, distributed d, total_scanned ts,
 //             groupByClause = 'GROUP BY mdiv.division_id, mdiv.division_name';
 //             masterTableJoins.push(`LEFT JOIN public.mst_division mdiv ON fs.district_cd::INTEGER = ANY (mdiv.district_cds::INTEGER[])`);
 //             orderByClause = 'mdiv.division_name';
-//             finalSelectTotalSchools = 'COUNT(DISTINCT fs.school_udise_code) AS total_schools,';
+//             finalSelectTotalSchools = 'COUNT(DISTINCT csc_totals.udise_sch_code) AS total_schools,';
 //             finalSelectTotalStudents = (class_level || effectiveClassLevels.length > 0)
 //                 ? `COALESCE(SUM(${effectiveClassLevels.map(cls => `fs.class_${cls}`).join(' + ')}), 0) AS total_students`
 //                 : 'COALESCE(SUM(fs.total_students), 0) AS total_students';
@@ -479,7 +477,7 @@ FROM school_distributed sd, distributed d, total_scanned ts,
 //             groupByClause = 'GROUP BY fs.district_cd::INTEGER, mdist.district_name';
 //             masterTableJoins.push(`LEFT JOIN public.mst_district mdist ON fs.district_cd::INTEGER = mdist.district_cd::INTEGER`);
 //             orderByClause = 'mdist.district_name';
-//             finalSelectTotalSchools = 'COUNT(DISTINCT fs.school_udise_code) AS total_schools,';
+//             finalSelectTotalSchools = 'COUNT(DISTINCT csc_totals.udise_sch_code) AS total_schools,';
 //             finalSelectTotalStudents = (class_level || effectiveClassLevels.length > 0)
 //                 ? `COALESCE(SUM(${effectiveClassLevels.map(cls => `fs.class_${cls}`).join(' + ')}), 0) AS total_students`
 //                 : 'COALESCE(SUM(fs.total_students), 0) AS total_students';
@@ -493,7 +491,7 @@ FROM school_distributed sd, distributed d, total_scanned ts,
 //             masterTableJoins.push(`LEFT JOIN public.mst_district mdist ON fs.district_cd::INTEGER = mdist.district_cd::INTEGER`);
 //             masterTableJoins.push(`LEFT JOIN public.mst_block mb ON fs.block_cd::BIGINT = mb.block_cd::BIGINT`);
 //             orderByClause = 'mb.block_name';
-//             finalSelectTotalSchools = 'COUNT(DISTINCT fs.school_udise_code) AS total_schools,';
+//             finalSelectTotalSchools = 'COUNT(DISTINCT csc_totals.udise_sch_code) AS total_schools,';
 //             finalSelectTotalStudents = (class_level || effectiveClassLevels.length > 0)
 //                 ? `COALESCE(SUM(${effectiveClassLevels.map(cls => `fs.class_${cls}`).join(' + ')}), 0) AS total_students`
 //                 : 'COALESCE(SUM(fs.total_students), 0) AS total_students';
@@ -507,7 +505,7 @@ FROM school_distributed sd, distributed d, total_scanned ts,
 //             masterTableJoins.push(`LEFT JOIN public.mst_district mdist ON fs.district_cd::INTEGER = mdist.district_cd::INTEGER`);
 //             masterTableJoins.push(`LEFT JOIN public.mst_block mb ON fs.block_cd::BIGINT = mb.block_cd::BIGINT`);
 //             orderByClause = 'mcl.cluster_name';
-//             finalSelectTotalSchools = 'COUNT(DISTINCT fs.school_udise_code) AS total_schools,';
+//             finalSelectTotalSchools = 'COUNT(DISTINCT csc_totals.udise_sch_code) AS total_schools,';
 //             finalSelectTotalStudents = (class_level || effectiveClassLevels.length > 0)
 //                 ? `COALESCE(SUM(${effectiveClassLevels.map(cls => `fs.class_${cls}`).join(' + ')}), 0) AS total_students`
 //                 : 'COALESCE(SUM(fs.total_students), 0) AS total_students';
@@ -559,7 +557,7 @@ FROM school_distributed sd, distributed d, total_scanned ts,
 //                 finalSelectTotalStudents = `COALESCE(SUM(${totalStudentsSum}), 0) AS total_students`;
 //                 totalScannedSchoolSelect = `COUNT(DISTINCT CASE WHEN sa.total_scanned > 0 AND (${effectiveClassLevels.map(cls => `fs.class_${cls} > 0`).join(' OR ')}) THEN fs.school_udise_code END) AS total_scanned_school`;
 //             } else {
-//                 finalSelectTotalSchools = 'COUNT(DISTINCT fs.school_udise_code) AS total_schools,';
+//                 finalSelectTotalSchools = 'COUNT(DISTINCT csc_totals.udise_sch_code) AS total_schools,';
 //                 finalSelectTotalStudents = 'COALESCE(SUM(fs.total_students), 0) AS total_students';
 //                 totalScannedSchoolSelect = 'COUNT(DISTINCT CASE WHEN sa.total_scanned > 0 THEN fs.school_udise_code END) AS total_scanned_school';
 //             }
@@ -569,7 +567,7 @@ FROM school_distributed sd, distributed d, total_scanned ts,
 //             groupByClause = '';
 //             masterTableJoins = [];
 //             orderByClause = '';
-//             finalSelectTotalSchools = 'COUNT(DISTINCT fs.school_udise_code) AS total_schools,';
+//             finalSelectTotalSchools = 'COUNT(DISTINCT csc_totals.udise_sch_code) AS total_schools,';
 //             finalSelectTotalStudents = 'COALESCE(SUM(fs.total_students), 0) AS total_students';
 //             totalScannedSchoolSelect = 'COUNT(DISTINCT CASE WHEN sa.total_scanned > 0 THEN fs.school_udise_code END) AS total_scanned_school';
 //             break;
@@ -630,7 +628,7 @@ FROM school_distributed sd, distributed d, total_scanned ts,
 //                 fs.cluster_cd,
 //                 tscb.udise_code,
 //                 ${effectiveCategory === 'subject_breakdown' ? 'ms.id AS subject_id,' : ''}
-//                 COALESCE(SUM(tscb.quantity), 0) AS total_quantity
+//                 COALESCE(SUM(tscb.received_qty), 0) AS total_quantity
 //             FROM public.tbc_school_challan_books tscb
 //             ${commonBookJoinAndFilters}
 //             JOIN filtered_schools fs ON tscb.udise_code = fs.school_udise_code
@@ -668,7 +666,7 @@ FROM school_distributed sd, distributed d, total_scanned ts,
 //             ${finalSelectTotalSchools}
 //             ${totalScannedSchoolSelect},
 //             ${finalSelectTotalStudents}
-//         FROM ${effectiveCategory === 'cluster' ? 'clusters_in_block mcl LEFT JOIN filtered_schools fs ON fs.cluster_cd::BIGINT = mcl.cluster_cd' : 'filtered_schools fs'}
+//         FROM ${effectiveCategory === 'cluster' ? 'clusters_in_block mcl LEFT JOIN filtered_schools fs ON fs.cluster_cd::BIGINT = mcl.cluster_cd' : 'filtered_schools fs'}\n        LEFT JOIN public.cluster_student_count csc_totals ON fs.school_udise_code = csc_totals.udise_sch_code
 //         ${masterTableJoins.join(' ')}
 //         ${
 //             effectiveCategory === 'subject_breakdown'
@@ -1247,17 +1245,17 @@ const buildSqlQuery = (filterData) => {
       );
       orderByClause = "md.depot_name";
       finalSelectTotalSchools =
-        "COUNT(DISTINCT fs.school_udise_code) AS total_schools,";
+        "COUNT(DISTINCT csc_totals.udise_sch_code) AS total_schools,";
       finalSelectTotalStudents =
         class_level || effectiveClassLevels.length > 0
           ? `COALESCE(SUM(${effectiveClassLevels
-              .map((cls) => `fs.class_${cls}`)
+              .map((cls) => `COALESCE(csc_totals.class_${cls}, 0)`)
               .join(" + ")}), 0) AS total_students`
-          : "COALESCE(SUM(fs.total_students), 0) AS total_students";
+          : "COALESCE(SUM(COALESCE(csc_totals.class_1, 0) + COALESCE(csc_totals.class_2, 0) + COALESCE(csc_totals.class_3, 0) + COALESCE(csc_totals.class_4, 0) + COALESCE(csc_totals.class_5, 0)), 0) AS total_students";
       totalScannedSchoolSelect =
         class_level || effectiveClassLevels.length > 0
           ? `COUNT(DISTINCT CASE WHEN sa.total_scanned > 0 AND (${effectiveClassLevels
-              .map((cls) => `fs.class_${cls} > 0`)
+              .map((cls) => `COALESCE(csc_totals.class_${cls}, 0) > 0`)
               .join(
                 " OR "
               )}) THEN fs.school_udise_code END) AS total_scanned_school`
@@ -1271,17 +1269,17 @@ const buildSqlQuery = (filterData) => {
       );
       orderByClause = "mdiv.division_name";
       finalSelectTotalSchools =
-        "COUNT(DISTINCT fs.school_udise_code) AS total_schools,";
+        "COUNT(DISTINCT csc_totals.udise_sch_code) AS total_schools,";
       finalSelectTotalStudents =
         class_level || effectiveClassLevels.length > 0
           ? `COALESCE(SUM(${effectiveClassLevels
-              .map((cls) => `fs.class_${cls}`)
+              .map((cls) => `COALESCE(csc_totals.class_${cls}, 0)`)
               .join(" + ")}), 0) AS total_students`
-          : "COALESCE(SUM(fs.total_students), 0) AS total_students";
+          : "COALESCE(SUM(COALESCE(csc_totals.class_1, 0) + COALESCE(csc_totals.class_2, 0) + COALESCE(csc_totals.class_3, 0) + COALESCE(csc_totals.class_4, 0) + COALESCE(csc_totals.class_5, 0)), 0) AS total_students";
       totalScannedSchoolSelect =
         class_level || effectiveClassLevels.length > 0
           ? `COUNT(DISTINCT CASE WHEN sa.total_scanned > 0 AND (${effectiveClassLevels
-              .map((cls) => `fs.class_${cls} > 0`)
+              .map((cls) => `COALESCE(csc_totals.class_${cls}, 0) > 0`)
               .join(
                 " OR "
               )}) THEN fs.school_udise_code END) AS total_scanned_school`
@@ -1296,17 +1294,17 @@ const buildSqlQuery = (filterData) => {
       );
       orderByClause = "mdist.district_name";
       finalSelectTotalSchools =
-        "COUNT(DISTINCT fs.school_udise_code) AS total_schools,";
+        "COUNT(DISTINCT csc_totals.udise_sch_code) AS total_schools,";
       finalSelectTotalStudents =
         class_level || effectiveClassLevels.length > 0
           ? `COALESCE(SUM(${effectiveClassLevels
-              .map((cls) => `fs.class_${cls}`)
+              .map((cls) => `COALESCE(csc_totals.class_${cls}, 0)`)
               .join(" + ")}), 0) AS total_students`
-          : "COALESCE(SUM(fs.total_students), 0) AS total_students";
+          : "COALESCE(SUM(COALESCE(csc_totals.class_1, 0) + COALESCE(csc_totals.class_2, 0) + COALESCE(csc_totals.class_3, 0) + COALESCE(csc_totals.class_4, 0) + COALESCE(csc_totals.class_5, 0)), 0) AS total_students";
       totalScannedSchoolSelect =
         class_level || effectiveClassLevels.length > 0
           ? `COUNT(DISTINCT CASE WHEN sa.total_scanned > 0 AND (${effectiveClassLevels
-              .map((cls) => `fs.class_${cls} > 0`)
+              .map((cls) => `COALESCE(csc_totals.class_${cls}, 0) > 0`)
               .join(
                 " OR "
               )}) THEN fs.school_udise_code END) AS total_scanned_school`
@@ -1323,17 +1321,17 @@ const buildSqlQuery = (filterData) => {
       );
       orderByClause = "mb.block_name";
       finalSelectTotalSchools =
-        "COUNT(DISTINCT fs.school_udise_code) AS total_schools,";
+        "COUNT(DISTINCT csc_totals.udise_sch_code) AS total_schools,";
       finalSelectTotalStudents =
         class_level || effectiveClassLevels.length > 0
           ? `COALESCE(SUM(${effectiveClassLevels
-              .map((cls) => `fs.class_${cls}`)
+              .map((cls) => `COALESCE(csc_totals.class_${cls}, 0)`)
               .join(" + ")}), 0) AS total_students`
-          : "COALESCE(SUM(fs.total_students), 0) AS total_students";
+          : "COALESCE(SUM(COALESCE(csc_totals.class_1, 0) + COALESCE(csc_totals.class_2, 0) + COALESCE(csc_totals.class_3, 0) + COALESCE(csc_totals.class_4, 0) + COALESCE(csc_totals.class_5, 0)), 0) AS total_students";
       totalScannedSchoolSelect =
         class_level || effectiveClassLevels.length > 0
           ? `COUNT(DISTINCT CASE WHEN sa.total_scanned > 0 AND (${effectiveClassLevels
-              .map((cls) => `fs.class_${cls} > 0`)
+              .map((cls) => `COALESCE(csc_totals.class_${cls}, 0) > 0`)
               .join(
                 " OR "
               )}) THEN fs.school_udise_code END) AS total_scanned_school`
@@ -1350,17 +1348,17 @@ const buildSqlQuery = (filterData) => {
       );
       orderByClause = "mcl.cluster_name";
       finalSelectTotalSchools =
-        "COUNT(DISTINCT fs.school_udise_code) AS total_schools,";
+        "COUNT(DISTINCT csc_totals.udise_sch_code) AS total_schools,";
       finalSelectTotalStudents =
         class_level || effectiveClassLevels.length > 0
           ? `COALESCE(SUM(${effectiveClassLevels
-              .map((cls) => `fs.class_${cls}`)
+              .map((cls) => `COALESCE(csc_totals.class_${cls}, 0)`)
               .join(" + ")}), 0) AS total_students`
-          : "COALESCE(SUM(fs.total_students), 0) AS total_students";
+          : "COALESCE(SUM(COALESCE(csc_totals.class_1, 0) + COALESCE(csc_totals.class_2, 0) + COALESCE(csc_totals.class_3, 0) + COALESCE(csc_totals.class_4, 0) + COALESCE(csc_totals.class_5, 0)), 0) AS total_students";
       totalScannedSchoolSelect =
         class_level || effectiveClassLevels.length > 0
           ? `COUNT(DISTINCT CASE WHEN sa.total_scanned > 0 AND (${effectiveClassLevels
-              .map((cls) => `fs.class_${cls} > 0`)
+              .map((cls) => `COALESCE(csc_totals.class_${cls}, 0) > 0`)
               .join(
                 " OR "
               )}) THEN fs.school_udise_code END) AS total_scanned_school`
@@ -1370,13 +1368,13 @@ const buildSqlQuery = (filterData) => {
       selectGroupByCols = "fs.school_udise_code, fs.school_name";
       groupByClause = "GROUP BY fs.school_udise_code, fs.school_name";
       orderByClause = "fs.school_udise_code";
-      finalSelectTotalSchools = "1 AS total_schools,";
+      finalSelectTotalSchools = "COUNT(DISTINCT csc_totals.udise_sch_code) AS total_schools,";
       finalSelectTotalStudents =
         class_level || effectiveClassLevels.length > 0
           ? `COALESCE(SUM(${effectiveClassLevels
-              .map((cls) => `fs.class_${cls}`)
+              .map((cls) => `COALESCE(csc_totals.class_${cls}, 0)`)
               .join(" + ")}), 0) AS total_students`
-          : "COALESCE(SUM(fs.total_students), 0) AS total_students";
+          : "COALESCE(SUM(COALESCE(csc_totals.class_1, 0) + COALESCE(csc_totals.class_2, 0) + COALESCE(csc_totals.class_3, 0) + COALESCE(csc_totals.class_4, 0) + COALESCE(csc_totals.class_5, 0)), 0) AS total_students";
       totalScannedSchoolSelect =
         "CASE WHEN COALESCE(SUM(sa.total_scanned), 0) > 0 THEN 1 ELSE 0 END AS total_scanned_school";
       break;
@@ -1392,9 +1390,9 @@ const buildSqlQuery = (filterData) => {
                                    .join(", ")}`;
       groupByClause = "GROUP BY fs.school_udise_code, fs.school_name";
       orderByClause = "fs.school_udise_code";
-      finalSelectTotalSchools = "1 AS total_schools,";
+      finalSelectTotalSchools = "COUNT(DISTINCT csc_totals.udise_sch_code) AS total_schools,";
       finalSelectTotalStudents =
-        "COALESCE(SUM(fs.total_students), 0) AS total_students";
+        "COALESCE(SUM(COALESCE(csc_totals.class_1, 0) + COALESCE(csc_totals.class_2, 0) + COALESCE(csc_totals.class_3, 0) + COALESCE(csc_totals.class_4, 0) + COALESCE(csc_totals.class_5, 0)), 0) AS total_students";
       totalScannedSchoolSelect =
         "CASE WHEN COALESCE(SUM(sa.total_scanned), 0) > 0 THEN 1 ELSE 0 END AS total_scanned_school";
       break;
@@ -1405,10 +1403,10 @@ const buildSqlQuery = (filterData) => {
       groupByClause = `GROUP BY sfs.subject_name, fs.school_udise_code, fs.school_name`;
       orderByClause = `sfs.subject_name`;
       finalSelectTotalSchools = `CASE WHEN COALESCE(SUM(${effectiveClassLevels
-        .map((cls) => `fs.class_${cls}`)
+        .map((cls) => `COALESCE(csc_totals.class_${cls}, 0)`)
         .join(" + ")}), 0) > 0 THEN 1 ELSE 0 END AS total_schools,`;
       finalSelectTotalStudents = `COALESCE(SUM(${effectiveClassLevels
-        .map((cls) => `fs.class_${cls}`)
+        .map((cls) => `COALESCE(csc_totals.class_${cls}, 0)`)
         .join(" + ")}), 0) AS total_students`;
       totalScannedSchoolSelect =
         "CASE WHEN COALESCE(SUM(sa.total_scanned), 0) > 0 THEN 1 ELSE 0 END AS total_scanned_school";
@@ -1420,33 +1418,33 @@ const buildSqlQuery = (filterData) => {
       orderByClause = "";
       if (class_level) {
         finalSelectTotalSchools =
-          "COUNT(DISTINCT CASE WHEN fs.class_" +
+          "COUNT(DISTINCT CASE WHEN csc_totals.class_" +
           class_level +
-          " > 0 THEN fs.school_udise_code END) AS total_schools,";
+          " > 0 THEN csc_totals.udise_sch_code END) AS total_schools,";
         finalSelectTotalStudents =
-          "COALESCE(SUM(fs.class_" + class_level + "), 0) AS total_students";
+          "COALESCE(SUM(csc_totals.class_" + class_level + "), 0) AS total_students";
         totalScannedSchoolSelect =
           "COUNT(DISTINCT CASE WHEN sa.total_scanned > 0 AND fs.class_" +
           class_level +
           " > 0 THEN fs.school_udise_code END) AS total_scanned_school";
       } else if (effectiveClassLevels.length > 0) {
         const totalStudentsSum = effectiveClassLevels
-          .map((cls) => `COALESCE(fs.class_${cls}, 0)`)
+          .map((cls) => `COALESCE(csc_totals.class_${cls}, 0)`)
           .join(" + ");
         finalSelectTotalSchools = `COUNT(DISTINCT CASE WHEN (${effectiveClassLevels
-          .map((cls) => `fs.class_${cls} > 0`)
+          .map((cls) => `COALESCE(csc_totals.class_${cls}, 0) > 0`)
           .join(" OR ")}) THEN fs.school_udise_code END) AS total_schools,`;
         finalSelectTotalStudents = `COALESCE(SUM(${totalStudentsSum}), 0) AS total_students`;
         totalScannedSchoolSelect = `COUNT(DISTINCT CASE WHEN sa.total_scanned > 0 AND (${effectiveClassLevels
-          .map((cls) => `fs.class_${cls} > 0`)
+          .map((cls) => `COALESCE(csc_totals.class_${cls}, 0) > 0`)
           .join(
             " OR "
           )}) THEN fs.school_udise_code END) AS total_scanned_school`;
       } else {
         finalSelectTotalSchools =
-          "COUNT(DISTINCT fs.school_udise_code) AS total_schools,";
+        "COUNT(DISTINCT csc_totals.udise_sch_code) AS total_schools,";
         finalSelectTotalStudents =
-          "COALESCE(SUM(fs.total_students), 0) AS total_students";
+        "COALESCE(SUM(COALESCE(csc_totals.class_1, 0) + COALESCE(csc_totals.class_2, 0) + COALESCE(csc_totals.class_3, 0) + COALESCE(csc_totals.class_4, 0) + COALESCE(csc_totals.class_5, 0)), 0) AS total_students";
         totalScannedSchoolSelect =
           "COUNT(DISTINCT CASE WHEN sa.total_scanned > 0 THEN fs.school_udise_code END) AS total_scanned_school";
       }
@@ -1457,9 +1455,9 @@ const buildSqlQuery = (filterData) => {
       masterTableJoins = [];
       orderByClause = "";
       finalSelectTotalSchools =
-        "COUNT(DISTINCT fs.school_udise_code) AS total_schools,";
+        "COUNT(DISTINCT csc_totals.udise_sch_code) AS total_schools,";
       finalSelectTotalStudents =
-        "COALESCE(SUM(fs.total_students), 0) AS total_students";
+        "COALESCE(SUM(COALESCE(csc_totals.class_1, 0) + COALESCE(csc_totals.class_2, 0) + COALESCE(csc_totals.class_3, 0) + COALESCE(csc_totals.class_4, 0) + COALESCE(csc_totals.class_5, 0)), 0) AS total_students";
       totalScannedSchoolSelect =
         "COUNT(DISTINCT CASE WHEN sa.total_scanned > 0 THEN fs.school_udise_code END) AS total_scanned_school";
       break;
@@ -1597,10 +1595,9 @@ const buildSqlQuery = (filterData) => {
                     ? "ms.id AS subject_id,"
                     : ""
                 }
-                COALESCE(SUM(tscb.quantity), 0) AS total_quantity
+                COALESCE(SUM(tscb.received_qty), 0) AS total_quantity
             FROM public.tbc_school_challan_books tscb
-            ${commonBookJoinAndFilters}
-            JOIN filtered_schools fs ON tscb.udise_code = fs.school_udise_code
+            JOIN filtered_schools fs ON tscb.udise_code = fs.school_udise_code::bigint
             GROUP BY fs.cluster_cd, tscb.udise_code ${
               effectiveCategory === "subject_breakdown" ? ", ms.id" : ""
             }
@@ -1617,7 +1614,7 @@ const buildSqlQuery = (filterData) => {
                 COALESCE(SUM(CAST(tscb.distributed_qty AS INTEGER)), 0) AS total_distributed
             FROM public.tbc_school_challan_books tscb
             ${commonBookJoinAndFilters}
-            JOIN filtered_schools fs ON tscb.udise_code = fs.school_udise_code
+            JOIN filtered_schools fs ON tscb.udise_code = fs.school_udise_code::bigint
             GROUP BY fs.cluster_cd, tscb.udise_code ${
               effectiveCategory === "subject_breakdown" ? ", ms.id" : ""
             }
@@ -1634,7 +1631,7 @@ const buildSqlQuery = (filterData) => {
                 COALESCE(COUNT(*), 0) AS total_scanned
             FROM public.tbc_book_tracking tbt
             ${scannedBookJoinAndFilters}
-            JOIN filtered_schools fs ON tbt.udise_code = fs.school_udise_code
+            JOIN filtered_schools fs ON tbt.udise_code = fs.school_udise_code::bigint
             GROUP BY fs.cluster_cd, tbt.udise_code ${
               effectiveCategory === "subject_breakdown" ? ", ms.id" : ""
             }
@@ -1654,6 +1651,7 @@ const buildSqlQuery = (filterData) => {
             ? "clusters_in_block mcl LEFT JOIN filtered_schools fs ON fs.cluster_cd::BIGINT = mcl.cluster_cd"
             : "filtered_schools fs"
         }
+        LEFT JOIN public.cluster_student_count csc_totals ON fs.school_udise_code = csc_totals.udise_sch_code
         ${masterTableJoins.join(" ")}
         ${
           effectiveCategory === "subject_breakdown"
@@ -2132,9 +2130,9 @@ const buildSchoolListSqlQuery = (filterData) => {
             CASE WHEN COALESCE(sa.total_scanned, 0) > 0 THEN 1 ELSE 0 END AS total_scanned_school,
             COALESCE(fs.total_students, 0) AS total_students
         FROM filtered_schools fs
-        LEFT JOIN school_distributed_agg sda ON fs.school_udise_code = sda.udise_code
-        LEFT JOIN distributed_agg da ON fs.school_udise_code = da.udise_code
-        LEFT JOIN scanned_agg sa ON fs.school_udise_code = sa.udise_code
+        LEFT JOIN school_distributed_agg sda ON fs.school_udise_code::bigint = sda.udise_code
+        LEFT JOIN distributed_agg da ON fs.school_udise_code::bigint = da.udise_code
+        LEFT JOIN scanned_agg sa ON fs.school_udise_code::bigint = sa.udise_code
         ORDER BY fs.school_udise_code;
     `;
 

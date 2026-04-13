@@ -39,59 +39,59 @@ const allowedOrigins = [
 //   });
 
 // } else {
-  // Worker Process: Run app setup inside async function
-  (async () => {
-    try {
-      await connectDB();
-      await initializeDatabase();
-     ////await insertAllBookData();////
+// Worker Process: Run app setup inside async function
+(async () => {
+  try {
+    await connectDB();
+    await initializeDatabase();
+    ////await insertAllBookData();////
 
-      const app = express();
+    const app = express();
 
-      // Middlewares
-      app.use(express.json());
-      app.use(morgan('dev'));
-	  app.use(compression());
-      app.set('trust proxy', true);
-      app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-      app.use('/barcodes', express.static(path.join(__dirname, 'barcodes')));
+    // Middlewares
+    app.use(express.json());
+    app.use(morgan('dev'));
+    app.use(compression());
+    app.set('trust proxy', true);
+    app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+    app.use('/barcodes', express.static(path.join(__dirname, 'barcodes')));
 
-      // Custom CORS Handling
-      app.use(cors({
-        origin: function (origin, callback) {
-          if (
-            !origin || // For tools like Postman or curl
-            allowedOrigins.includes(origin) ||
-            allowedOrigins.some(rule => rule instanceof RegExp ? rule.test(origin) : false)
-          ) {
-            callback(null, true);
-          } else {
-            callback(new Error('❌ Not allowed by CORS'));
-          }
-        },
-        credentials: true,
-        methods: ["GET", "POST", "PUT", "DELETE"],
-        allowedHeaders: ["Content-Type", "Authorization"],
-        exposedHeaders: ["Set-Cookie"]
-      }));
-      app.options("*", cors());
+    // Custom CORS Handling
+    app.use(cors({
+      origin: function (origin, callback) {
+        if (
+          !origin || // For tools like Postman or curl
+          allowedOrigins.includes(origin) ||
+          allowedOrigins.some(rule => rule instanceof RegExp ? rule.test(origin) : false)
+        ) {
+          callback(null, true);
+        } else {
+          callback(new Error('❌ Not allowed by CORS'));
+        }
+      },
+      credentials: true,
+      methods: ["GET", "POST", "PUT", "DELETE"],
+      allowedHeaders: ["Content-Type", "Authorization"],
+      exposedHeaders: ["Set-Cookie"]
+    }));
+    app.options("*", cors());
 
-      // Routes
-      const statusRoutes = require('./routes/adminRoutes/statusRoutes');
-      const router = require('./routes/router');
+    // Routes
+    const statusRoutes = require('./routes/adminRoutes/statusRoutes');
+    const router = require('./routes/router');
 
-      app.use('/api/v3', router);
-      app.use('/api/v2/test', statusRoutes);
-      app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerJson, swaggerOptions));
+    app.use('/api/v3', router);
+    app.use('/api/v2/test', statusRoutes);
+    app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerJson, swaggerOptions));
 
-      // Start Server
-      app.listen(PORT, () => {
-        console.log(` Backend running on http://localhost:${PORT} by worker ${process.pid} at ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}`);
-      });
+    // Start Server
+    app.listen(PORT, () => {
+      console.log(` Backend running on http://localhost:${PORT} by worker ${process.pid} at ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}`);
+    });
 
-    } catch (err) {
-      console.error('❌ Failed to start server:', err);
-      process.exit(1);
-    }
-  })();
+  } catch (err) {
+    console.error('❌ Failed to start server:', err);
+    process.exit(1);
+  }
+})();
 //}
