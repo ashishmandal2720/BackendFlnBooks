@@ -14,7 +14,7 @@ const { insertAllBookData } = require('./config/insertInto');
 // Load environment variables
 dotenv.config();
 
-const PORT = process.env.PORT || 5051;
+const PORT = process.env.PORT || 5059;
 
 // Allowed Origins for CORS
 const allowedOrigins = [
