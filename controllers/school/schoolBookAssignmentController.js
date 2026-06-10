@@ -712,6 +712,93 @@ const getClasswiseSubjectBookCount = async (req, res) => {
   }
 };
 
+const updateTeacherReceivedQty = async (req, res) => {
+  try {
+    const { udise_code, books } = req.body;
+
+    if (!udise_code || !books || !Array.isArray(books) || books.length === 0) {
+      return res.status(400).json({ success: false, message: "udise_code and books array are required." });
+    }
+
+    for (const item of books) {
+      const { subject_id, new_received_qty } = item;
+      const newQty = parseInt(new_received_qty);
+
+      if (!subject_id || isNaN(newQty) || newQty < 0) {
+        return res.status(400).json({ success: false, message: `Invalid subject_id or new_received_qty for subject ${subject_id}.` });
+      }
+
+      // Count scanned books for this subject at this school
+      const scanResult = await pool.query(
+        `SELECT COUNT(*) AS scan_count FROM tbc_book_tracking WHERE subject_id = $1 AND udise_code = $2`,
+        [subject_id, udise_code]
+      );
+      const scanCount = parseInt(scanResult.rows[0].scan_count);
+
+      // Fetch all received challan book rows for this subject
+      const { rows: challanRows } = await pool.query(
+        `SELECT id, received_qty, quantity, distributed_qty, remaining_qty
+         FROM tbc_school_challan_books
+         WHERE udise_code = $1 AND subject_id = $2 AND received_status = TRUE
+         ORDER BY id ASC`,
+        [udise_code, subject_id]
+      );
+
+      if (challanRows.length === 0) {
+        return res.status(404).json({ success: false, message: `No received records found for subject ${subject_id}.` });
+      }
+
+      const totalDistributed = challanRows.reduce((sum, r) => sum + parseInt(r.distributed_qty || 0), 0);
+
+      if (newQty < scanCount) {
+        return res.status(400).json({
+          success: false,
+          message: `New quantity (${newQty}) cannot be less than scanned books count (${scanCount}) for subject ${subject_id}.`
+        });
+      }
+
+      if (newQty < totalDistributed) {
+        return res.status(400).json({
+          success: false,
+          message: `New quantity (${newQty}) cannot be less than already distributed books (${totalDistributed}) for subject ${subject_id}.`
+        });
+      }
+
+      if (challanRows.length === 1) {
+        const row = challanRows[0];
+        const newRemaining = newQty - parseInt(row.distributed_qty || 0);
+        await pool.query(
+          `UPDATE tbc_school_challan_books SET received_qty = $1, quantity = $2, remaining_qty = $3 WHERE id = $4`,
+          [newQty, newQty, newRemaining, row.id]
+        );
+      } else {
+        // Multiple rows: apply the delta to the last row
+        const currentTotal = challanRows.reduce((sum, r) => sum + parseInt(r.received_qty || 0), 0);
+        const delta = newQty - currentTotal;
+        const lastRow = challanRows[challanRows.length - 1];
+        const newLastReceived = parseInt(lastRow.received_qty || 0) + delta;
+        const newLastQty = parseInt(lastRow.quantity || 0) + delta;
+        const newLastRemaining = parseInt(lastRow.remaining_qty || 0) + delta;
+
+        if (newLastReceived < 0 || newLastRemaining < 0) {
+          return res.status(400).json({ success: false, message: `Resulting quantity for subject ${subject_id} would be negative in the latest batch.` });
+        }
+
+        await pool.query(
+          `UPDATE tbc_school_challan_books SET received_qty = $1, quantity = $2, remaining_qty = $3 WHERE id = $4`,
+          [newLastReceived, newLastQty, newLastRemaining, lastRow.id]
+        );
+      }
+    }
+
+    return res.status(200).json({ success: true, message: "Received quantities updated successfully." });
+
+  } catch (err) {
+    console.error("Error in updateTeacherReceivedQty:", err);
+    res.status(500).json({ success: false, message: "Error updating received quantity", error: err.message });
+  }
+};
+
 module.exports = {
     addBookDistribution,
     addBookDistributionNew,
@@ -722,5 +809,6 @@ module.exports = {
     scanBookCode,
     getBooksCount,
     getClasswiseSubjectBookCount,
-    updateSchoolBookDistribution
+    updateSchoolBookDistribution,
+    updateTeacherReceivedQty
 };

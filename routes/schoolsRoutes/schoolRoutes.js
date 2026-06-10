@@ -7,7 +7,8 @@ const { addBookDistribution,addBookDistributionNew,
     getBookDistributionDetails,
     confirmSchoolBookReceipt,
     confirmSchoolBookSingleReceipt,
-    updateSchoolBookDistribution
+    updateSchoolBookDistribution,
+    updateTeacherReceivedQty
 } = require('../../controllers/school/schoolBookAssignmentController');
 
 const {
@@ -57,6 +58,7 @@ const {
     
     router.post("/verify", authenticate, checkRole(['School','Teacher','PrivateTeacher']),confirmSchoolBookReceipt);
     router.post("/distribute",authenticate, checkRole(['School','Teacher','PrivateTeacher']),updateSchoolBookDistribution);
+    router.put("/update-received-qty",authenticate, checkRole(['School','Teacher','PrivateTeacher']),updateTeacherReceivedQty);
     router.post("/verify/single",authenticate, checkRole(['School','Teacher','PrivateTeacher']), confirmSchoolBookSingleReceipt);
     router.get("/getCount/:udisecode", booksStdCount);
     router.post("/scan-code",authenticate, checkRole(['School','Teacher','PrivateTeacher']), scanCode);
