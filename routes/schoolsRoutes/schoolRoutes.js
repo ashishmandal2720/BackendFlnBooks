@@ -38,7 +38,14 @@ const {
   
    
 } = require('../../controllers/school/schNewController');
-    
+
+const {
+    createDamageReport,
+    scanDamagedBook,
+    createDamageReportBulk,
+    getSubjectWiseStd2Damage
+} = require('../../controllers/school/damagedBookController');
+
     router.post("/getPvtSchByDepot", getPrivateSchoolsByDepot);
     router.post("/getHighSchoolByDepot", getHighSchoolByDepot);
     router.post("/getSchoolByCluster", getSchoolByCluster);
@@ -70,6 +77,11 @@ const {
     router.post("/subjectWiseStd2",authenticate, checkRole(['School','Teacher','PrivateTeacher']), SubjectWiseStdOff2);
     router.post("/getTbcBookdata",authenticate, checkRole(['School','Teacher','PrivateTeacher']), getTbcBookdata);
     router.post("/getSubjectByUdise", getSubjectByUdise);
+
+    router.post('/damage/report', authenticate, checkRole(['School','Teacher','PrivateTeacher']), createDamageReport);
+    router.post('/damage/scan', authenticate, checkRole(['School','Teacher','PrivateTeacher']), scanDamagedBook);
+    router.post('/damage/bulk', authenticate, checkRole(['School','Teacher','PrivateTeacher']), createDamageReportBulk);
+    router.post('/damage/list', authenticate, checkRole(['School','Teacher','PrivateTeacher']), getSubjectWiseStd2Damage);
 
 
 module.exports = router;

@@ -80,7 +80,7 @@ const allowedOrigins = [
     const statusRoutes = require('./routes/adminRoutes/statusRoutes');
     const router = require('./routes/router');
 
-    app.use('/api/v3', router);
+    app.use('/flnBooks/api/v3', router);
     app.use('/api/v2/test', statusRoutes);
     app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerJson, swaggerOptions));
 

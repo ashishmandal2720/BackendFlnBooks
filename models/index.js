@@ -37,6 +37,7 @@ const { createBarcodeList } = require('./uniqueBarcodesModel');
 const { createChallanTbl } = require('./deoptChallanModel');
 const { createSchBookDistribution } = require('./schBookDistributionModel');
 const { createJoinDirectorTable } = require('./masterTables/mstJointDirectorModel');
+const { createDamagedBooksTable } = require('./damagedBooksModel');
 
 
 
@@ -75,6 +76,7 @@ const initializeDatabase = async () => {
     await createSchBookDistribution();
     await createMstDivisionTable();
     await createJoinDirectorTable();
+    await createDamagedBooksTable();
 
     // await createFunctionAndTrigger();
 

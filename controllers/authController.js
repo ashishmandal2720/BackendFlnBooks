@@ -2,6 +2,11 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { pool } = require('../config/db');
 const responseHandler = require('../utils/responseHandler');
+
+const logAuthEvent = (event, details) => {
+  console.log(`[authController] ${event}`, details ?? '');
+};
+
 const roleMappings = {
   1: { table_name: null, column_name: null },
   2: { table_name: null, column_name: null },
@@ -19,6 +24,7 @@ const roleMappings = {
 };
 
 const getDataRoleUser = async (role_id,emp_code,contact)=>{
+  logAuthEvent('getDataRoleUser called', { role_id, emp_code, contact });
   const role = parseInt(role_id);
   if(role === 1 || role === 2 || role === 11) {
        return { name: 'Admin User', designation: 'System Role', emp_code: '' };
@@ -70,6 +76,7 @@ WHERE
 }
 
 const registerUserNew = async (req, res) => {
+    logAuthEvent('registerUserNew called', req.body);
     const { role_id, emp_code, contact, password } = req.body;
     const role = parseInt(role_id);
     // --- Input Validation ---
@@ -133,6 +140,7 @@ const registerUserNew = async (req, res) => {
 };
 
 const insertCacUsers = async (req, res) => {
+  logAuthEvent('insertCacUsers called');
   try {
     // Fetch only new CAC records not in history
     const { rows: cacRecords } = await pool.query(`
@@ -215,6 +223,7 @@ const insertCacUsers = async (req, res) => {
 };
 
 const insertDeoUsers = async (req, res) => {
+  logAuthEvent('insertDeoUsers called');
   try {
     // Fetch only new CAC records not in history
     const { rows: deoRecords } = await pool.query(`
@@ -305,6 +314,7 @@ const insertDeoUsers = async (req, res) => {
 };
 
 const insertBeoUsers = async (req, res) => {
+  logAuthEvent('insertBeoUsers called');
   try {
     // Fetch only new CAC records not in history
     const { rows: beo_records } = await pool.query(`
@@ -395,6 +405,7 @@ const insertBeoUsers = async (req, res) => {
 };
 
 const insertProgrammerUsers = async (req, res) => {
+  logAuthEvent('insertProgrammerUsers called');
   try {
     // Fetch only new programmer records not in history
     const { rows: programmerRecords } = await pool.query(`
@@ -485,6 +496,7 @@ const insertProgrammerUsers = async (req, res) => {
 };
 
 const insertJoinDirectorUsers = async (req, res) => {
+  logAuthEvent('insertJoinDirectorUsers called');
   try {
     // Fetch only new join_directors not already inserted
     const { rows: director_records } = await pool.query(`
@@ -576,6 +588,7 @@ const insertJoinDirectorUsers = async (req, res) => {
 
 const getUserByIdAndRole = async (req,res) => {
   /* #swagger.tags = ['Auth'] */
+  logAuthEvent('getUserByIdAndRole called', req.query);
   const {role_id,emp_code,contact} = req.query;
   try {
     await getDataRoleUser(role_id,emp_code,contact).then((data)=>{
@@ -597,6 +610,7 @@ const getUserByIdAndRole = async (req,res) => {
 
 const registerUser = async (req, res) => {
   /* #swagger.tags = ['Auth'] */
+  logAuthEvent('registerUser called', req.body);
 
   try {
     const { name, email, password, role_id, contact, address, unique_code } = req.body;
@@ -781,6 +795,7 @@ const registerUser = async (req, res) => {
 
 const loginUser = async (req, res) => {
   /* #swagger.tags = ['Auth'] */
+  logAuthEvent('loginUser called', req.body);
   /* #swagger.consumes = ['application/json']  
   #swagger.schema = [$ref: "#/definitions/Auth"]
 */
@@ -852,6 +867,7 @@ const loginUser = async (req, res) => {
 
 const getRole = async (req, res) => {
   /* #swagger.tags = ['Auth'] */
+  logAuthEvent('getRole called');
   try {
     // const users = await pool.query('SELECT * FROM mst_roles WHERE role_id NOT IN(1,9)');
     const users = await pool.query('SELECT * FROM mst_roles');
@@ -862,6 +878,7 @@ const getRole = async (req, res) => {
 };
 const getRoleId = async (req, res) => {
   /* #swagger.tags = ['Auth'] */
+  logAuthEvent('getRoleId called', { role_id: req.user?.role });
   try {
     const role_id = req.user.role;
     // const users = await pool.query('SELECT * FROM mst_roles WHERE role_id NOT IN(1,9)');
@@ -889,6 +906,7 @@ const getRoleId = async (req, res) => {
 
 
 const registerCac = async (req, res) => {
+  logAuthEvent('registerCac called', req.body);
   try {
     const {
       role,
