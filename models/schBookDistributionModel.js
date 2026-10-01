@@ -22,6 +22,7 @@ const createSchBookDistribution = async () => {
             udise_code BIGINT NOT NULL,
             challan_id INT REFERENCES tbc_school_challans(id),
             book_id INT REFERENCES tbc_books(id),
+            subject_id INT REFERENCES mst_subjects(id),
             quantity INT NOT NULL,
             remaining_qty INT NOT NULL,
             received_qty INT DEFAULT 0,
@@ -54,6 +55,19 @@ const createSchBookDistribution = async () => {
             subject_id INT REFERENCES mst_subjects(id)
         );
         
+        DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'tbc_school_challan_books' 
+          AND column_name = 'subject_id'
+    ) THEN
+        ALTER TABLE tbc_school_challan_books 
+        ADD COLUMN subject_id INT;
+    END IF;
+END;
+$$;
+
         DO $$
 BEGIN
     IF NOT EXISTS (

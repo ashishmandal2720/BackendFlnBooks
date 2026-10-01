@@ -36,11 +36,11 @@ const updateUser = async (req, res) => {
   /* #swagger.security = [{"Bearer": []}] */
   try {
     const { id } = req.params;
-    const { name, email, password, contact_number, address, profile_image, digital_signature, status,role_id } = req.body;
+    const { name, email, password, contact_number, address, profile_image, digital_signature, status, role_id } = req.body;
 
     const updatedUser = await pool.query(
       "UPDATE public.mst_users SET name=$1, email=$2, password=$3, contact_number=$4, address=$5, profile_image=$6, digital_signature=$7, status=$8,role_id=$9 WHERE user_id = $10 RETURNING *",
-      [name, email, password, contact_number, address, profile_image, digital_signature, status,role_id, id]
+      [name, email, password, contact_number, address, profile_image, digital_signature, status, role_id, id]
     );
 
     if (updatedUser.rows.length === 0) {
@@ -99,7 +99,7 @@ const updatePassword = async (req, res) => {
   /* #swagger.security = [{"Bearer": []}] */
   try {
     const id = req.user.user_id;
-    const { newPassword,oldPassword } = req.body;
+    const { newPassword, oldPassword } = req.body;
 
     const userResult = await pool.query(
       'SELECT * FROM mst_users WHERE user_id = $1',
@@ -111,7 +111,7 @@ const updatePassword = async (req, res) => {
     const user = userResult.rows[0];
     const isMatch = await bcrypt.compare(oldPassword, user.password);
     if (!isMatch) return responseHandler(res, 401, 'Password Not Matched');
-    else{
+    else {
       const hashedPassword = await bcrypt.hash(newPassword, 12);
       await pool.query('UPDATE mst_users SET password = $1 WHERE user_id = $2', [
         hashedPassword,
@@ -127,7 +127,7 @@ const updatePassword = async (req, res) => {
 
 const resetPassword = async (req, res) => {
   /* #swagger.tags = ['Users'] */
-   /* #swagger.security = [{"Bearer": []}] */
+  /* #swagger.security = [{"Bearer": []}] */
 
   try {
     const { identifier, newPassword } = req.body;
@@ -156,15 +156,15 @@ const resetPassword = async (req, res) => {
       [hashedPassword, user.user_id]
     );
 
-  //   responseHandler(res, 200, 'Password reset successfully');
-  // } catch (error) {
-  //   responseHandler(res, 400, 'Error resetting password', null, error);
-  // }
+    //   responseHandler(res, 200, 'Password reset successfully');
+    // } catch (error) {
+    //   responseHandler(res, 400, 'Error resetting password', null, error);
+    // }
 
-     res.status(200).json({ success: true, message: 'Password reset successfully' });
+    res.status(200).json({ success: true, message: 'Password reset successfully' });
   } catch (error) {
     res.status(400).json({ success: false, message: 'Error resetting password', error: error.message });
   }
 };
 
-module.exports = { getUsers, approveUser, addUser,deleteUser,updateUser,updatePassword,resetPassword};
+module.exports = { getUsers, approveUser, addUser, deleteUser, updateUser, updatePassword, resetPassword };

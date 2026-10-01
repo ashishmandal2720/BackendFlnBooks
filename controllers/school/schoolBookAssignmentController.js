@@ -5,213 +5,213 @@ const responseHandler = require("../../utils/responseHandler");
  * It creates a school-specific challan and updates the central cluster stock.
  */
 const addBookDistributionNew = async (req, res) => {
-    /* #swagger.tags = ['To School'] */
-    /* #swagger.security = [{ "Bearer": [] }] */
+  /* #swagger.tags = ['To School'] */
+  /* #swagger.security = [{ "Bearer": [] }] */
 
-    const client = await pool.connect();
-    try {
-        const sender_id = req.user.user_id;
-        const sender_role = req.user.role; // Assuming 6 = Cluster
+  const client = await pool.connect();
+  try {
+    const sender_id = req.user.user_id;
+    const sender_role = req.user.role; // Assuming 6 = Cluster
 
-        // --- 1. Authorization Check ---
-        // This logic is specifically for a Cluster user distributing books.
-        if (sender_role !== 6) {
-            return res.status(403).json({ message: "Forbidden: Only clusters can perform this action." });
-        }
-
-        const { udise_code, books, challan_date } = req.body;
-        
-        // Input validation for books array
-        if (!books || !Array.isArray(books) || books.length === 0) {
-             return res.status(400).json({ message: "Books array is required and cannot be empty." });
-        }
-
-        await client.query('BEGIN');
-
-        // --- 2. Create School Challan Header ---
-        const challanRes = await client.query(
-            `INSERT INTO tbc_school_challans (sender_id, udise_code, challan_date)
-             VALUES ($1, $2, $3) RETURNING *`,
-            [sender_id, parseInt(udise_code), challan_date]
-        );
-
-        const challan_id = challanRes.rows[0].id;
-        // Generate a descriptive challan number
-        const challan_number = `SCH-${challan_date.replace(/-/g, '')}-${challan_id}`;
-
-        await client.query(
-            `UPDATE tbc_school_challans SET challan_number = $1 WHERE id = $2`,
-            [challan_number, challan_id]
-        );
-
-        // --- 3. Process Each Book for Distribution ---
-        let hasValidQuantity = false;
-        for (let book of books) {
-            // Note: `stock_challan_id` is no longer used as we check the aggregated stock table.
-            const { book_id, quantity } = book;
-
-            if (!quantity || quantity <= 0) {
-                continue; // Skip books with zero or negative quantity
-            }
-            hasValidQuantity = true;
-
-            // Define the source stock table (exclusively the cluster's stock)
-            const stockTable = 'tbc_depot_book_stock';
-
-            // --- 4. Check Available Stock ---
-            // Check against the central stock table using the cluster's ID (sender_id).
-            const stockCheck = await client.query(
-                `SELECT remaining_qty FROM ${stockTable} WHERE user_id = $1 AND book_id = $2 FOR UPDATE`,
-                [sender_id, book_id]
-            );
-
-            if (!stockCheck.rows.length || stockCheck.rows[0].remaining_qty < quantity) {
-                await client.query('ROLLBACK');
-                return res.status(400).json({ message: `Insufficient stock for book ID ${book_id}. Available: ${stockCheck.rows[0]?.remaining_qty || 0}, Required: ${quantity}` });
-            }
-
-            // --- 5. Add Book to School Challan & Update Stock ---
-            // Insert the book record into the school-specific challan.
-            await client.query(
-                `INSERT INTO tbc_school_challan_books (challan_id, udise_code, book_id, quantity, remaining_qty)
-                 VALUES ($1, $2, $3, $4, $5)`,
-                [challan_id, parseInt(udise_code), book_id, quantity, quantity]
-            );
-
-            // Decrement the quantity from the cluster's central stock record.
-            await client.query(
-                `UPDATE ${stockTable} SET remaining_qty = remaining_qty - $1
-                 WHERE user_id = $2 AND book_id = $3`,
-                [quantity, sender_id, book_id]
-            );
-        }
-
-        // --- 6. Final Validation and Commit ---
-        if (!hasValidQuantity) {
-            await client.query('ROLLBACK');
-            return res.status(400).json({ message: "No valid book quantities were provided." });
-        }
-
-        await client.query('COMMIT');
-        res.status(201).json({ message: 'Books assigned to school successfully', challan_number });
-
-    } catch (err) {
-        console.error("Error in addBookDistributionNew:", err);
-        await client.query('ROLLBACK');
-        res.status(500).json({ message: 'Error assigning books to school', error: err.message });
-    } finally {
-        client.release();
+    // --- 1. Authorization Check ---
+    // This logic is specifically for a Cluster user distributing books.
+    if (sender_role !== 6) {
+      return res.status(403).json({ message: "Forbidden: Only clusters can perform this action." });
     }
+
+    const { udise_code, books, challan_date } = req.body;
+
+    // Input validation for books array
+    if (!books || !Array.isArray(books) || books.length === 0) {
+      return res.status(400).json({ message: "Books array is required and cannot be empty." });
+    }
+
+    await client.query('BEGIN');
+
+    // --- 2. Create School Challan Header ---
+    const challanRes = await client.query(
+      `INSERT INTO tbc_school_challans (sender_id, udise_code, challan_date)
+             VALUES ($1, $2, $3) RETURNING *`,
+      [sender_id, parseInt(udise_code), challan_date]
+    );
+
+    const challan_id = challanRes.rows[0].id;
+    // Generate a descriptive challan number
+    const challan_number = `SCH-${challan_date.replace(/-/g, '')}-${challan_id}`;
+
+    await client.query(
+      `UPDATE tbc_school_challans SET challan_number = $1 WHERE id = $2`,
+      [challan_number, challan_id]
+    );
+
+    // --- 3. Process Each Book for Distribution ---
+    let hasValidQuantity = false;
+    for (let book of books) {
+      // Note: `stock_challan_id` is no longer used as we check the aggregated stock table.
+      const { book_id, quantity } = book;
+
+      if (!quantity || quantity <= 0) {
+        continue; // Skip books with zero or negative quantity
+      }
+      hasValidQuantity = true;
+
+      // Define the source stock table (exclusively the cluster's stock)
+      const stockTable = 'tbc_depot_book_stock';
+
+      // --- 4. Check Available Stock ---
+      // Check against the central stock table using the cluster's ID (sender_id).
+      const stockCheck = await client.query(
+        `SELECT remaining_qty FROM ${stockTable} WHERE user_id = $1 AND book_id = $2 FOR UPDATE`,
+        [sender_id, book_id]
+      );
+
+      if (!stockCheck.rows.length || stockCheck.rows[0].remaining_qty < quantity) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ message: `Insufficient stock for book ID ${book_id}. Available: ${stockCheck.rows[0]?.remaining_qty || 0}, Required: ${quantity}` });
+      }
+
+      // --- 5. Add Book to School Challan & Update Stock ---
+      // Insert the book record into the school-specific challan.
+      await client.query(
+        `INSERT INTO tbc_school_challan_books (challan_id, udise_code, book_id, quantity, remaining_qty)
+                 VALUES ($1, $2, $3, $4, $5)`,
+        [challan_id, parseInt(udise_code), book_id, quantity, quantity]
+      );
+
+      // Decrement the quantity from the cluster's central stock record.
+      await client.query(
+        `UPDATE ${stockTable} SET remaining_qty = remaining_qty - $1
+                 WHERE user_id = $2 AND book_id = $3`,
+        [quantity, sender_id, book_id]
+      );
+    }
+
+    // --- 6. Final Validation and Commit ---
+    if (!hasValidQuantity) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ message: "No valid book quantities were provided." });
+    }
+
+    await client.query('COMMIT');
+    res.status(201).json({ message: 'Books assigned to school successfully', challan_number });
+
+  } catch (err) {
+    console.error("Error in addBookDistributionNew:", err);
+    await client.query('ROLLBACK');
+    res.status(500).json({ message: 'Error assigning books to school', error: err.message });
+  } finally {
+    client.release();
+  }
 };
 
 
 
 
 const addBookDistribution = async (req, res) => {
-    /* #swagger.tags = ['To School'] */
+  /* #swagger.tags = ['To School'] */
   /* #swagger.security = [{ "Bearer": [] }] */
-    const client = await pool.connect();
-    try {
-      const sender_id = req.user.user_id;
-      const sender_role = req.user.role; // 1 = Admin, 3 = Depot, 6 = Cluster, 4 = School
-      console.log("Sender Role:", sender_role);
+  const client = await pool.connect();
+  try {
+    const sender_id = req.user.user_id;
+    const sender_role = req.user.role; // 1 = Admin, 3 = Depot, 6 = Cluster, 4 = School
+    console.log("Sender Role:", sender_role);
 
-      const { udise_code, books, challan_date } = req.body;
-      console.log(books)
+    const { udise_code, books, challan_date } = req.body;
+    console.log(books)
 
 
-      console.log("Books:", parseInt(udise_code), books, challan_date);
-      //books =[{ book_id: 1, quantity: 10, stock_challan_id: 1 }]
-  
-      await client.query('BEGIN');
-  
-      const challanRes = await client.query(
-        `INSERT INTO tbc_school_challans (sender_id, udise_code, challan_date)
+    console.log("Books:", parseInt(udise_code), books, challan_date);
+    //books =[{ book_id: 1, quantity: 10, stock_challan_id: 1 }]
+
+    await client.query('BEGIN');
+
+    const challanRes = await client.query(
+      `INSERT INTO tbc_school_challans (sender_id, udise_code, challan_date)
          VALUES ($1, $2, $3) RETURNING *`,
-        [sender_id, parseInt(udise_code), challan_date]
+      [sender_id, parseInt(udise_code), challan_date]
+    );
+
+    const challan_id = challanRes.rows[0].id;
+    const challan_number = `SCH-${challan_date.replace(/-/g, '')}-${challan_id}`;
+
+    await client.query(
+      `UPDATE tbc_school_challans SET challan_number = $1 WHERE id = $2`,
+      [challan_number, challan_id]
+    );
+
+    let hasValidQuantity = false;
+    for (let book of books) {
+      const { book_id, quantity, stock_challan_id } = book;
+
+      if (quantity <= 0) continue;
+
+      hasValidQuantity = true;
+      let stockTable =
+        sender_role === 6 // Cluster
+          ? 'tbc_depot_cluster_challan_books'
+          : 'tbc_depot_challan_books';
+
+      const stockCheck = await client.query(
+        `SELECT remaining_qty FROM ${stockTable} WHERE challan_id = $1 AND book_id = $2`,
+        [stock_challan_id, book_id]
       );
-  
-      const challan_id = challanRes.rows[0].id;
-      const challan_number = `SCH-${challan_date.replace(/-/g, '')}-${challan_id}`;
-  
-      await client.query(
-        `UPDATE tbc_school_challans SET challan_number = $1 WHERE id = $2`,
-        [challan_number, challan_id]
-      );
 
-      let hasValidQuantity = false;
-      for (let book of books) {
-        const { book_id, quantity, stock_challan_id } = book;
-
-        if (quantity <= 0) continue;
-
-        hasValidQuantity = true;
-        let stockTable =
-          sender_role === 6 // Cluster
-            ? 'tbc_depot_cluster_challan_books'
-            : 'tbc_depot_challan_books';
-  
-        const stockCheck = await client.query(
-          `SELECT remaining_qty FROM ${stockTable} WHERE challan_id = $1 AND book_id = $2`,
-          [stock_challan_id, book_id]
-        );
-  
-        if (!stockCheck.rows.length || stockCheck.rows[0].remaining_qty < quantity) {
-          await client.query('ROLLBACK');
-          return res.status(400).json({ message: `Insufficient stock for book ID ${book_id}` });
-        }
-        else{
-          await client.query(
-            `INSERT INTO tbc_school_challan_books (challan_id,udise_code, book_id, quantity, remaining_qty)
-            VALUES ($1, $2, $3, $4, $5)`,
-            [challan_id,parseInt(udise_code), book_id, quantity, quantity]
-          );
-    
-          await client.query(
-            `UPDATE ${stockTable} SET remaining_qty = remaining_qty - $1
-            WHERE challan_id = $2 AND book_id = $3`,
-            [quantity, stock_challan_id, book_id]
-          );
-        }
-      }
-
-      if (!hasValidQuantity) { 
+      if (!stockCheck.rows.length || stockCheck.rows[0].remaining_qty < quantity) {
         await client.query('ROLLBACK');
-        return res.status(400).json({ message: "No valid book quantities provided" });
+        return res.status(400).json({ message: `Insufficient stock for book ID ${book_id}` });
       }
-      // await client.query(
-      //   `INSERT INTO tbc_notifications (user_id, message)
-      //    VALUES ($1, $2)`,
-      //   [udise_code, `Books assigned to your school in challan ${challan_number}`]
-      // );
-  
-      await client.query('COMMIT');
-      res.json({ message: 'Books assigned to school successfully', challan_number });
-  
-    } catch (err) {
-      console.error(err);
-      await client.query('ROLLBACK');
-      res.status(500).json({ message: 'Error assigning books to school', error: err.message });
-    } finally {
-      client.release();
+      else {
+        await client.query(
+          `INSERT INTO tbc_school_challan_books (challan_id,udise_code, book_id, quantity, remaining_qty)
+            VALUES ($1, $2, $3, $4, $5)`,
+          [challan_id, parseInt(udise_code), book_id, quantity, quantity]
+        );
+
+        await client.query(
+          `UPDATE ${stockTable} SET remaining_qty = remaining_qty - $1
+            WHERE challan_id = $2 AND book_id = $3`,
+          [quantity, stock_challan_id, book_id]
+        );
+      }
     }
-  };
-  
+
+    if (!hasValidQuantity) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ message: "No valid book quantities provided" });
+    }
+    // await client.query(
+    //   `INSERT INTO tbc_notifications (user_id, message)
+    //    VALUES ($1, $2)`,
+    //   [udise_code, `Books assigned to your school in challan ${challan_number}`]
+    // );
+
+    await client.query('COMMIT');
+    res.json({ message: 'Books assigned to school successfully', challan_number });
+
+  } catch (err) {
+    console.error(err);
+    await client.query('ROLLBACK');
+    res.status(500).json({ message: 'Error assigning books to school', error: err.message });
+  } finally {
+    client.release();
+  }
+};
+
 
 
 const getBookDistribution = async (req, res) => {
   /* #swagger.tags = ['To School'] */
   /* #swagger.security = [{ "Bearer": [] }] */
   try {
-      const depot_id = req.user.user_id;
-      const result = await pool.query(`SELECT c.*, p.name as depot_name, d.name as deo_name ,m.district_name  FROM tbc_depot_deo_challans as c
+    const depot_id = req.user.user_id;
+    const result = await pool.query(`SELECT c.*, p.name as depot_name, d.name as deo_name ,m.district_name  FROM tbc_depot_deo_challans as c
           JOIN mst_users p ON c.depot_id = p.user_id
           JOIN mst_users d ON c.deo_id = d.user_id 
           JOIN mst_deo m on m.mobile::bigint = d.column_value::bigint
            WHERE c.depot_id = $1`, [depot_id]);
-      res.json({ challans: result.rows });
+    res.json({ challans: result.rows });
   } catch (error) {
-      res.status(500).json({ message: 'Error fetching challans', error: error.message });
+    res.status(500).json({ message: 'Error fetching challans', error: error.message });
   }
 };
 
@@ -220,10 +220,10 @@ const getBookDistributionDetails = async (req, res) => {
   /* #swagger.tags = ['To School'] */
   /* #swagger.security = [{ "Bearer": [] }] */
   try {
-      const { challan_id } = req.params;
+    const { challan_id } = req.params;
 
-      const result = await pool.query(
-          `SELECT 
+    const result = await pool.query(
+      `SELECT 
               c.id AS challan_id, 
               c.challan_number, 
               c.challan_date, 
@@ -256,48 +256,48 @@ const getBookDistributionDetails = async (req, res) => {
           JOIN mst_subjects sb ON bk.subject_id = sb.id
           JOIN mst_medium m ON sb.medium::int = m.medium_cd
           WHERE c.id = $1`,
-          [challan_id]
-      );
+      [challan_id]
+    );
 
-      if (result.rows.length === 0) {
-          return res.status(404).json({ message: "Challan not found" });
-      }
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "Challan not found" });
+    }
 
-      const challanData = {
-          challan_id: result.rows[0].challan_id,
-          challan_number: result.rows[0].challan_number,
-          challan_date: result.rows[0].challan_date,
-          total_weight: result.rows[0].total_weight,
-          dispatch_status: result.rows[0].dispatch_status,
-          depot_name: result.rows[0].depot_name,
-          depot_address: result.rows[0].depot_address,
-          depot_contact: result.rows[0].depot_contact,
-          depot_email: result.rows[0].depot_email,
-          deo_name: result.rows[0].deo_name,
-          deo_address: result.rows[0].deo_address,
-          deo_contact: result.rows[0].deo_contact,
-          deo_email: result.rows[0].deo_email,
-          books: result.rows.map(row => ({
-              book_id: row.book_id,
-              sets: row.sets,
-              medium:row.medium,
-              class_level:row.class_level,
-              books_per_set: row.books_per_set,
-              book_weight: row.book_weight,
-              open_books: row.open_books,
-              book_bundle_weight:row.book_weight*row.books_per_set,
-              book_total:row.books_per_set*row.sets+row.open_books,
-              book_remaining_qty: row.remaining_qty,
-              book_total_weight:row.books_per_set*row.sets*row.book_weight+(row.open_books *row.book_weight),
-              subject_name: row.name,
-              class_name: row.class_level,
-              medium_name: row.medium_name,
-          }))
-      };
+    const challanData = {
+      challan_id: result.rows[0].challan_id,
+      challan_number: result.rows[0].challan_number,
+      challan_date: result.rows[0].challan_date,
+      total_weight: result.rows[0].total_weight,
+      dispatch_status: result.rows[0].dispatch_status,
+      depot_name: result.rows[0].depot_name,
+      depot_address: result.rows[0].depot_address,
+      depot_contact: result.rows[0].depot_contact,
+      depot_email: result.rows[0].depot_email,
+      deo_name: result.rows[0].deo_name,
+      deo_address: result.rows[0].deo_address,
+      deo_contact: result.rows[0].deo_contact,
+      deo_email: result.rows[0].deo_email,
+      books: result.rows.map(row => ({
+        book_id: row.book_id,
+        sets: row.sets,
+        medium: row.medium,
+        class_level: row.class_level,
+        books_per_set: row.books_per_set,
+        book_weight: row.book_weight,
+        open_books: row.open_books,
+        book_bundle_weight: row.book_weight * row.books_per_set,
+        book_total: row.books_per_set * row.sets + row.open_books,
+        book_remaining_qty: row.remaining_qty,
+        book_total_weight: row.books_per_set * row.sets * row.book_weight + (row.open_books * row.book_weight),
+        subject_name: row.name,
+        class_name: row.class_level,
+        medium_name: row.medium_name,
+      }))
+    };
 
-      res.json({ message: "Challan details fetched successfully", challan: challanData });
+    res.json({ message: "Challan details fetched successfully", challan: challanData });
   } catch (error) {
-      res.status(500).json({ error: error.message });
+    res.status(500).json({ error: error.message });
   }
 };
 
@@ -308,7 +308,7 @@ const confirmSchoolBookReceipt = async (req, res) => {
     const { books, udise_code } = req.body;
 
     console.log("Received books:", books, "for udise_code:", udise_code);
-    
+
 
     if (!books?.length || !udise_code) {
       return res.status(400).json({ message: "Missing udise_code or books." });
@@ -330,16 +330,54 @@ const confirmSchoolBookReceipt = async (req, res) => {
       return res.status(500).json({ message: "Failed to generate challan_id." });
     }
 
+    // Fetch all tbc_books to map subject_id <-> book_id (tbc_books.id)
+    const tbcBooksRes = await pool.query(`SELECT id AS book_id, subject_id FROM tbc_books`);
+    const subjectToBookMap = {}; // subject_id -> book_id
+    const bookToSubjectMap = {}; // book_id -> subject_id
+
+    tbcBooksRes.rows.forEach(r => {
+      if (r.subject_id != null) subjectToBookMap[r.subject_id] = r.book_id;
+      if (r.book_id != null) bookToSubjectMap[r.book_id] = r.subject_id;
+    });
+
     // Prepare values for book inserts
     const values = [];
     for (const book of books) {
-      const { subject_id, received_qty } = book;
-      if (!subject_id || received_qty == null) continue;
+      const rawSubjectId = book.subject_id != null ? Number(book.subject_id) : null;
+      const rawBookId = (book.book_id != null || book.id != null) ? Number(book.book_id ?? book.id) : null;
+
+      let finalSubjectId = null;
+      let finalBookId = null;
+
+      if (rawSubjectId != null && rawBookId != null) {
+        finalSubjectId = rawSubjectId;
+        finalBookId = rawBookId;
+      } else if (rawSubjectId != null) {
+        finalSubjectId = rawSubjectId;
+        finalBookId = subjectToBookMap[rawSubjectId] || rawSubjectId;
+      } else if (rawBookId != null) {
+        // If rawBookId matches a subject_id in tbc_books, the caller passed subject_id in book_id property
+        if (subjectToBookMap[rawBookId]) {
+          finalSubjectId = rawBookId;
+          finalBookId = subjectToBookMap[rawBookId];
+        } else if (bookToSubjectMap[rawBookId]) {
+          finalBookId = rawBookId;
+          finalSubjectId = bookToSubjectMap[rawBookId];
+        } else {
+          finalBookId = rawBookId;
+          finalSubjectId = rawBookId;
+        }
+      }
+
+      const received_qty = book.received_qty ?? book.quantity;
+
+      if ((!finalBookId && !finalSubjectId) || received_qty == null) continue;
 
       values.push([
         challan_id,
         udise_code,
-        subject_id,
+        finalBookId,
+        finalSubjectId,
         received_qty, // quantity
         received_qty, // remaining_qty
         received_qty, // received_qty
@@ -353,11 +391,11 @@ const confirmSchoolBookReceipt = async (req, res) => {
 
     const insertQuery = `
       INSERT INTO tbc_school_challan_books 
-        (challan_id, udise_code, subject_id, quantity, remaining_qty, received_qty, received_status)
+        (challan_id, udise_code, book_id, subject_id, quantity, remaining_qty, received_qty, received_status)
       VALUES 
         ${values.map((_, i) =>
-          `($${i * 7 + 1}, $${i * 7 + 2}, $${i * 7 + 3}, $${i * 7 + 4}, $${i * 7 + 5}, $${i * 7 + 6}, $${i * 7 + 7})`
-        ).join(', ')}
+      `($${i * 8 + 1}, $${i * 8 + 2}, $${i * 8 + 3}, $${i * 8 + 4}, $${i * 8 + 5}, $${i * 8 + 6}, $${i * 8 + 7}, $${i * 8 + 8})`
+    ).join(', ')}
     `;
 
     await pool.query(insertQuery, values.flat());
@@ -477,18 +515,18 @@ const updateSchoolBookDistribution = async (req, res) => {
 };
 
 const confirmSchoolBookSingleReceipt = async (req, res) => {
-    /* #swagger.tags = ['To School'] */
+  /* #swagger.tags = ['To School'] */
   /* #swagger.security = [{ "Bearer": [] }] */
   try {
     const teacher_id = req.user.user_id;
-    const { challan_id, book_id, received_qty,udise_code } = req.body;
+    const { challan_id, book_id, received_qty, udise_code } = req.body;
 
     const challanCheck = await pool.query(
       `SELECT * FROM tbc_school_challans WHERE id = $1 AND udise_code = $2`,
       [challan_id, udise_code]
     );
     if (!challanCheck.rows.length) {
-      return res.status(404).json({ success:false,message: "Invalid challan or not assigned to this school" });
+      return res.status(404).json({ success: false, message: "Invalid challan or not assigned to this school" });
     }
 
     await pool.query(
@@ -502,17 +540,17 @@ const confirmSchoolBookSingleReceipt = async (req, res) => {
       `UPDATE tbc_school_challan_books 
        SET received_status = TRUE, received_at = CURRENT_TIMESTAMP, received_by = $2
        WHERE id = $1`,
-      [challan_id,teacher_id]
+      [challan_id, teacher_id]
     );
 
-    res.json({ success:true,message: "Book marked as received successfully." });
+    res.json({ success: true, message: "Book marked as received successfully." });
   } catch (err) {
-    res.status(500).json({ success:false,message: "Error confirming book receipt", error: err.message });
+    res.status(500).json({ success: false, message: "Error confirming book receipt", error: err.message });
   }
 };
 
 const scanBookCode = async (req, res) => {
-    /* #swagger.tags = ['To School'] */
+  /* #swagger.tags = ['To School'] */
   /* #swagger.security = [{ "Bearer": [] }] */
   try {
     const teacher_id = req.user.user_id;
@@ -530,10 +568,10 @@ const scanBookCode = async (req, res) => {
     const series_number = barcodeStr.slice(-8);
 
     const rest = barcodeStr.slice(0, barcodeStr.length - 8);
-    const publisher_id = parseInt(rest.slice(-3)); 
+    const publisher_id = parseInt(rest.slice(-3));
     const order_id = parseInt(rest.slice(0, rest.length - 3));
 
-    const full_code_number = parseInt(barcodeStr); 
+    const full_code_number = parseInt(barcodeStr);
 
     const barcodeRes = await pool.query(
       `SELECT * FROM tbc_generated_barcodes 
@@ -547,7 +585,7 @@ const scanBookCode = async (req, res) => {
     }
 
     const barcodeRow = barcodeRes.rows[0];
-    
+
     const alreadyScanned = await pool.query(
       `SELECT * FROM tbc_book_tracking 
        WHERE unique_code = $1 AND isbn = $2`,
@@ -565,7 +603,7 @@ const scanBookCode = async (req, res) => {
         isbn_code,
         barcode_value,
         barcodeRow.book_id,
-        null, 
+        null,
         teacher_id,
         udise_code
       ]
@@ -589,7 +627,7 @@ const scanBookCode = async (req, res) => {
 };
 
 const getBooksCount = async (req, res) => {
-      /* #swagger.tags = ['To School'] */
+  /* #swagger.tags = ['To School'] */
   /* #swagger.security = [{ "Bearer": [] }] */
   try {
 
@@ -649,10 +687,10 @@ WHERE gs.class_level::int = ANY (
 `,
       [udise_code]
     );
-    res.json({success:true, data: result.rows });
+    res.json({ success: true, data: result.rows });
   } catch (error) {
     console.log(error)
-    res.status(500).json({success:false, message: 'Error fetching book count', error: error.message });
+    res.status(500).json({ success: false, message: 'Error fetching book count', error: error.message });
   }
 };
 const getClasswiseSubjectBookCount = async (req, res) => {
@@ -713,86 +751,318 @@ const getClasswiseSubjectBookCount = async (req, res) => {
 };
 
 const updateTeacherReceivedQty = async (req, res) => {
+  /* #swagger.tags = ['To School'] */
+  /* #swagger.security = [{ "Bearer": [] }] */
   try {
-    const { udise_code, books } = req.body;
-
-    if (!udise_code || !books || !Array.isArray(books) || books.length === 0) {
-      return res.status(400).json({ success: false, message: "udise_code and books array are required." });
+    let bookList = [];
+    if (Array.isArray(req.body)) {
+      bookList = req.body;
+    } else if (Array.isArray(req.body?.books)) {
+      bookList = req.body.books;
+    } else if (req.body?.books && typeof req.body.books === 'object') {
+      bookList = [req.body.books];
+    } else if (
+      req.body &&
+      (req.body.subject_id != null || req.body.book_id != null || req.body.id != null || req.body.b_id != null)
+    ) {
+      bookList = [req.body];
     }
 
-    for (const item of books) {
-      const { subject_id, new_received_qty } = item;
-      const newQty = parseInt(new_received_qty);
+    let udise_code =
+      req.body?.udise_code ??
+      req.body?.udisecode ??
+      req.body?.udise ??
+      req.query?.udise_code ??
+      req.query?.udisecode ??
+      req.query?.udise;
 
-      if (!subject_id || isNaN(newQty) || newQty < 0) {
-        return res.status(400).json({ success: false, message: `Invalid subject_id or new_received_qty for subject ${subject_id}.` });
+    if (!udise_code && bookList.length > 0) {
+      udise_code = bookList[0].udise_code ?? bookList[0].udisecode ?? bookList[0].udise;
+    }
+
+    if (!udise_code && req.user?.user_id) {
+      const userRes = await pool.query(
+        `SELECT column_value FROM mst_users WHERE user_id = $1`,
+        [req.user.user_id]
+      );
+      if (userRes.rows.length && userRes.rows[0].column_value) {
+        udise_code = userRes.rows[0].column_value;
+      }
+    }
+
+    if (!udise_code) {
+      return res.status(400).json({ success: false, message: "udise_code is required." });
+    }
+
+    if (!bookList || bookList.length === 0) {
+      return res.status(400).json({ success: false, message: "books array or book details are required." });
+    }
+
+    // Map subject_id <-> book_id from tbc_books
+    const tbcBooksRes = await pool.query(`SELECT id AS book_id, subject_id FROM tbc_books`);
+    const subjectToBookMap = {};
+    const bookToSubjectMap = {};
+    tbcBooksRes.rows.forEach((r) => {
+      if (r.subject_id != null) subjectToBookMap[Number(r.subject_id)] = Number(r.book_id);
+      if (r.book_id != null) bookToSubjectMap[Number(r.book_id)] = Number(r.subject_id);
+    });
+
+    for (const item of bookList) {
+      const rawQty =
+        item.new_received_qty ??
+        item.received_qty ??
+        item.new_quantity ??
+        item.quantity ??
+        item.new_qty ??
+        item.qty;
+
+      if (rawQty == null || isNaN(Number(rawQty)) || Number(rawQty) < 0) {
+        return res.status(400).json({
+          success: false,
+          message: `Invalid quantity provided for subject/book: ${
+            item.subject_id ?? item.book_id ?? item.id ?? 'unknown'
+          }.`
+        });
+      }
+      const newQty = parseInt(rawQty, 10);
+
+      // Determine subject_id and book_id
+      let finalSubjectId = item.subject_id != null ? Number(item.subject_id) : null;
+      let finalBookId =
+        item.b_id != null
+          ? Number(item.b_id)
+          : item.book_id != null
+          ? Number(item.book_id)
+          : null;
+      const targetChallanBookId =
+        item.challan_book_id != null
+          ? Number(item.challan_book_id)
+          : null;
+
+      // If only one is present, resolve the other via mapping
+      if (finalSubjectId != null && finalBookId == null) {
+        finalBookId = subjectToBookMap[finalSubjectId] || null;
+      } else if (finalBookId != null && finalSubjectId == null) {
+        if (bookToSubjectMap[finalBookId]) {
+          finalSubjectId = bookToSubjectMap[finalBookId];
+        } else if (subjectToBookMap[finalBookId]) {
+          // Caller passed subject_id inside book_id
+          finalSubjectId = finalBookId;
+          finalBookId = subjectToBookMap[finalSubjectId] || null;
+        }
       }
 
-      // Count scanned books for this subject at this school
-      const scanResult = await pool.query(
-        `SELECT COUNT(*) AS scan_count FROM tbc_book_tracking WHERE subject_id = $1 AND udise_code = $2`,
-        [subject_id, udise_code]
-      );
-      const scanCount = parseInt(scanResult.rows[0].scan_count);
+      // If still unresolved and item.id is provided
+      let directRowId = targetChallanBookId;
+      if (!directRowId && item.id != null) {
+        const checkId = Number(item.id);
+        if (bookToSubjectMap[checkId]) {
+          if (finalBookId == null) finalBookId = checkId;
+          if (finalSubjectId == null) finalSubjectId = bookToSubjectMap[checkId];
+        } else if (subjectToBookMap[checkId]) {
+          if (finalSubjectId == null) finalSubjectId = checkId;
+          if (finalBookId == null) finalBookId = subjectToBookMap[checkId];
+        } else {
+          directRowId = checkId;
+        }
+      }
 
-      // Fetch all received challan book rows for this subject
-      const { rows: challanRows } = await pool.query(
-        `SELECT id, received_qty, quantity, distributed_qty, remaining_qty
-         FROM tbc_school_challan_books
-         WHERE udise_code = $1 AND subject_id = $2 AND received_status = TRUE
-         ORDER BY id ASC`,
-        [udise_code, subject_id]
-      );
+      // Query tbc_school_challan_books for existing rows
+      let challanRows = [];
 
+      // 1. Try by direct row id if available
+      if (directRowId) {
+        const byIdRes = await pool.query(
+          `SELECT id, challan_id, received_qty, quantity, distributed_qty, remaining_qty, subject_id, book_id
+           FROM tbc_school_challan_books
+           WHERE udise_code::bigint = $1::bigint AND id = $2
+           ORDER BY id ASC`,
+          [udise_code, directRowId]
+        );
+        if (byIdRes.rows.length) {
+          challanRows = byIdRes.rows;
+          if (finalSubjectId == null) finalSubjectId = challanRows[0].subject_id;
+          if (finalBookId == null) finalBookId = challanRows[0].book_id;
+        }
+      }
+
+      // 2. Query by subject_id or book_id
+      if (challanRows.length === 0 && (finalSubjectId != null || finalBookId != null)) {
+        const bySubjRes = await pool.query(
+          `SELECT id, challan_id, received_qty, quantity, distributed_qty, remaining_qty, subject_id, book_id
+           FROM tbc_school_challan_books
+           WHERE udise_code::bigint = $1::bigint
+             AND (
+               ($2::int IS NOT NULL AND subject_id = $2::int)
+               OR ($3::int IS NOT NULL AND book_id = $3::int)
+             )
+           ORDER BY id ASC`,
+          [udise_code, finalSubjectId, finalBookId]
+        );
+        if (bySubjRes.rows.length) {
+          challanRows = bySubjRes.rows;
+          if (finalSubjectId == null) finalSubjectId = challanRows[0].subject_id;
+          if (finalBookId == null) finalBookId = challanRows[0].book_id;
+        }
+      }
+
+      // 3. Fallback: check if item.book_id was actually tbc_school_challan_books.id
+      if (challanRows.length === 0 && item.book_id != null) {
+        const byScbIdRes = await pool.query(
+          `SELECT id, challan_id, received_qty, quantity, distributed_qty, remaining_qty, subject_id, book_id
+           FROM tbc_school_challan_books
+           WHERE udise_code::bigint = $1::bigint AND id = $2
+           ORDER BY id ASC`,
+          [udise_code, Number(item.book_id)]
+        );
+        if (byScbIdRes.rows.length) {
+          challanRows = byScbIdRes.rows;
+          if (finalSubjectId == null) finalSubjectId = challanRows[0].subject_id;
+          if (finalBookId == null) finalBookId = challanRows[0].book_id;
+        }
+      }
+
+      // If no existing record found:
       if (challanRows.length === 0) {
-        return res.status(404).json({ success: false, message: `No received records found for subject ${subject_id}.` });
+        if (newQty > 0 && (finalSubjectId != null || finalBookId != null)) {
+          const resolvedBookId = finalBookId || subjectToBookMap[finalSubjectId] || finalSubjectId;
+          const resolvedSubjectId = finalSubjectId || bookToSubjectMap[finalBookId] || finalBookId;
+
+          let challanRes = await pool.query(
+            `SELECT id FROM tbc_school_challans WHERE udise_code::bigint = $1::bigint ORDER BY id DESC LIMIT 1`,
+            [udise_code]
+          );
+          let challan_id;
+          if (challanRes.rows.length) {
+            challan_id = challanRes.rows[0].id;
+          } else {
+            const newChallan = await pool.query(
+              `INSERT INTO tbc_school_challans (udise_code, challan_date, received_status, received_at, received_by)
+               VALUES ($1, CURRENT_DATE, TRUE, CURRENT_TIMESTAMP, $2)
+               RETURNING id`,
+              [udise_code, req.user?.user_id || null]
+            );
+            challan_id = newChallan.rows[0].id;
+          }
+
+          const insertRes = await pool.query(
+            `INSERT INTO tbc_school_challan_books
+               (challan_id, udise_code, book_id, subject_id, quantity, remaining_qty, received_qty, received_status)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, TRUE)
+             RETURNING id, challan_id, received_qty, quantity, distributed_qty, remaining_qty, subject_id, book_id`,
+            [challan_id, udise_code, resolvedBookId, resolvedSubjectId, newQty, newQty, newQty]
+          );
+          challanRows = insertRes.rows;
+        } else if (newQty === 0) {
+          continue;
+        } else {
+          return res.status(404).json({
+            success: false,
+            message: `No received records found for subject/book ${item.subject_id ?? item.book_id ?? item.id}.`
+          });
+        }
       }
 
-      const totalDistributed = challanRows.reduce((sum, r) => sum + parseInt(r.distributed_qty || 0), 0);
+      // Count scanned books for this subject/book at this school
+      const scanResult = await pool.query(
+        `SELECT COUNT(*) AS scan_count FROM tbc_book_tracking 
+         WHERE udise_code::bigint = $1::bigint
+           AND (
+             ($2::int IS NOT NULL AND subject_id = $2::int)
+             OR ($3::int IS NOT NULL AND book_id = $3::int)
+           )
+           AND scanned_yn = TRUE`,
+        [udise_code, finalSubjectId, finalBookId]
+      );
+      const scanCount = parseInt(scanResult.rows[0]?.scan_count || 0, 10);
+      const totalDistributed = challanRows.reduce(
+        (sum, r) => sum + parseInt(r.distributed_qty || 0, 10),
+        0
+      );
 
       if (newQty < scanCount) {
         return res.status(400).json({
           success: false,
-          message: `New quantity (${newQty}) cannot be less than scanned books count (${scanCount}) for subject ${subject_id}.`
+          message: `New quantity (${newQty}) cannot be less than scanned books count (${scanCount}) for subject ${
+            finalSubjectId || finalBookId || item.subject_id || item.book_id
+          }.`
         });
       }
 
       if (newQty < totalDistributed) {
         return res.status(400).json({
           success: false,
-          message: `New quantity (${newQty}) cannot be less than already distributed books (${totalDistributed}) for subject ${subject_id}.`
+          message: `New quantity (${newQty}) cannot be less than already distributed books (${totalDistributed}) for subject ${
+            finalSubjectId || finalBookId || item.subject_id || item.book_id
+          }.`
         });
       }
 
+      const totalConsumed = Math.max(scanCount, totalDistributed);
+      const totalRemaining = Math.max(0, newQty - totalConsumed);
+
       if (challanRows.length === 1) {
         const row = challanRows[0];
-        const newRemaining = newQty - parseInt(row.distributed_qty || 0);
         await pool.query(
-          `UPDATE tbc_school_challan_books SET received_qty = $1, quantity = $2, remaining_qty = $3 WHERE id = $4`,
-          [newQty, newQty, newRemaining, row.id]
+          `UPDATE tbc_school_challan_books 
+           SET received_qty = $1, quantity = $2, remaining_qty = $3, received_status = TRUE 
+           WHERE id = $4`,
+          [newQty, newQty, totalRemaining, row.id]
         );
       } else {
-        // Multiple rows: apply the delta to the last row
-        const currentTotal = challanRows.reduce((sum, r) => sum + parseInt(r.received_qty || 0), 0);
-        const delta = newQty - currentTotal;
-        const lastRow = challanRows[challanRows.length - 1];
-        const newLastReceived = parseInt(lastRow.received_qty || 0) + delta;
-        const newLastQty = parseInt(lastRow.quantity || 0) + delta;
-        const newLastRemaining = parseInt(lastRow.remaining_qty || 0) + delta;
+        // Distribute newQty and remaining across multiple batches cleanly
+        let remainingQtyToDistribute = newQty;
+        let remainingRemToDistribute = totalRemaining;
 
-        if (newLastReceived < 0 || newLastRemaining < 0) {
-          return res.status(400).json({ success: false, message: `Resulting quantity for subject ${subject_id} would be negative in the latest batch.` });
+        for (let i = 0; i < challanRows.length; i++) {
+          const row = challanRows[i];
+          const isLast = i === challanRows.length - 1;
+
+          let rowNewQty;
+          if (isLast) {
+            rowNewQty = remainingQtyToDistribute;
+          } else {
+            const originalRowQty = parseInt(row.received_qty || row.quantity || 0, 10);
+            rowNewQty = Math.min(originalRowQty, remainingQtyToDistribute);
+            remainingQtyToDistribute -= rowNewQty;
+          }
+
+          let rowNewRemaining;
+          if (isLast) {
+            rowNewRemaining = Math.max(0, remainingRemToDistribute);
+          } else {
+            rowNewRemaining = Math.min(rowNewQty, remainingRemToDistribute);
+            remainingRemToDistribute -= rowNewRemaining;
+          }
+
+          await pool.query(
+            `UPDATE tbc_school_challan_books 
+             SET received_qty = $1, quantity = $2, remaining_qty = $3, received_status = TRUE 
+             WHERE id = $4`,
+            [rowNewQty, rowNewQty, rowNewRemaining, row.id]
+          );
         }
+      }
 
+      // Sync received_qty and status on parent challan(s)
+      const challanIds = [...new Set(challanRows.map((r) => r.challan_id).filter(Boolean))];
+      for (const cId of challanIds) {
         await pool.query(
-          `UPDATE tbc_school_challan_books SET received_qty = $1, quantity = $2, remaining_qty = $3 WHERE id = $4`,
-          [newLastReceived, newLastQty, newLastRemaining, lastRow.id]
+          `UPDATE tbc_school_challans
+           SET received_qty = (
+             SELECT COALESCE(SUM(received_qty), 0) FROM tbc_school_challan_books WHERE challan_id = $1
+           ),
+           received_status = TRUE
+           WHERE id = $1`,
+          [cId]
         );
       }
     }
 
-    return res.status(200).json({ success: true, message: "Received quantities updated successfully." });
-
+    return res.status(200).json({
+      success: true,
+      message: "Received quantities updated successfully."
+    });
   } catch (err) {
     console.error("Error in updateTeacherReceivedQty:", err);
     res.status(500).json({ success: false, message: "Error updating received quantity", error: err.message });
@@ -800,15 +1070,15 @@ const updateTeacherReceivedQty = async (req, res) => {
 };
 
 module.exports = {
-    addBookDistribution,
-    addBookDistributionNew,
-    getBookDistribution,
-    getBookDistributionDetails,
-    confirmSchoolBookReceipt,
-    confirmSchoolBookSingleReceipt,
-    scanBookCode,
-    getBooksCount,
-    getClasswiseSubjectBookCount,
-    updateSchoolBookDistribution,
-    updateTeacherReceivedQty
+  addBookDistribution,
+  addBookDistributionNew,
+  getBookDistribution,
+  getBookDistributionDetails,
+  confirmSchoolBookReceipt,
+  confirmSchoolBookSingleReceipt,
+  scanBookCode,
+  getBooksCount,
+  getClasswiseSubjectBookCount,
+  updateSchoolBookDistribution,
+  updateTeacherReceivedQty
 };

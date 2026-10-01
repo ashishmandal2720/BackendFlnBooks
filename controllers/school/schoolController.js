@@ -453,7 +453,7 @@ FROM mst_schools ms
 LEFT JOIN aggregated_students sc ON ms.udise_sch_code = sc.udise_sch_code
 WHERE ms.udise_sch_code = $1;
   `;
-  
+
 
   try {
     const result = await pool.query(query, [udise_sch_code]);
@@ -527,15 +527,13 @@ const createBookDistribution = async (req, res) => {
             INSERT INTO sch_assigned_books 
             (order_id, class_level, subject_name, quantity, sets, books_per_set, open_book, total_weight) 
             VALUES ${assigned_books
-              .map(
-                (_, i) =>
-                  `($${i * 8 + 1}, $${i * 8 + 2}, $${i * 8 + 3}, $${
-                    i * 8 + 4
-                  }, $${i * 8 + 5}, $${i * 8 + 6}, $${i * 8 + 7}, $${
-                    i * 8 + 8
-                  })`
-              )
-              .join(", ")}
+        .map(
+          (_, i) =>
+            `($${i * 8 + 1}, $${i * 8 + 2}, $${i * 8 + 3}, $${i * 8 + 4
+            }, $${i * 8 + 5}, $${i * 8 + 6}, $${i * 8 + 7}, $${i * 8 + 8
+            })`
+        )
+        .join(", ")}
         `;
 
     const assignedBooksValues = assigned_books.flatMap((book) => [
@@ -606,7 +604,7 @@ const getStudentCounts = async (req, res) => {
           .json({ success: false, message: `Invalid ${field}` });
       }
 
-   
+
       filteredDistricts = result.rows[0].district_cds.map(String);
     } else if (districts) {
       filteredDistricts = Array.isArray(districts)
@@ -624,7 +622,7 @@ const getStudentCounts = async (req, res) => {
       });
     }
 
- 
+
     const totalStudentsExpression = class_level
       ? `SUM(class_${String(class_level)})::bigint AS total_students`
       : `SUM(
@@ -634,7 +632,7 @@ const getStudentCounts = async (req, res) => {
 
     const totalSchoolsExpression = `COUNT(DISTINCT school_udise_code)::bigint AS total_schools`;
 
-  
+
     if (filteredDistricts.length) {
       whereClause.push(`district_cd = ANY($${paramIndex})`);
       queryParams.push(filteredDistricts);
@@ -674,7 +672,7 @@ const getStudentCounts = async (req, res) => {
         "cluster_cd",
         "cluster_name",
         "school_name",
-        "school_udise_code" 
+        "school_udise_code"
       ];
     } else if (block_cd) {
       groupByFields = [
@@ -748,7 +746,7 @@ const studentCountDepotWise = async (req, res) => {
     class_level,
     division_id,
     depot_id,
-    category = "depot", 
+    category = "depot",
   } = req.body;
 
   try {
@@ -760,7 +758,7 @@ const studentCountDepotWise = async (req, res) => {
       districtLookup.set(d.district_cd, d.district_name);
     });
 
-   
+
     let districtsFromCategory = [];
     let categoryTable;
     let categoryNameField;
@@ -788,7 +786,7 @@ const studentCountDepotWise = async (req, res) => {
         // then you should remove the parseInt and keep the $1::text cast.
         categoryIdValue = parseInt(categoryId, 10);
         if (isNaN(categoryIdValue)) {
-            return res.status(400).json({ success: false, message: `Invalid ${categoryIdField}: Must be a number.` });
+          return res.status(400).json({ success: false, message: `Invalid ${categoryIdField}: Must be a number.` });
         }
 
         const result = await pool.query(
@@ -925,11 +923,11 @@ const studentCountDepotWise = async (req, res) => {
           const districtName = districtNameLookup.get(districtCd) || `Unknown District (${districtCd})`;
           // Check if this district_cd (object form) is already in the array
           if (!grouped[categoryIdentifier].district_cds.some(d => d.id === districtCd)) {
-             grouped[categoryIdentifier].district_cds.push({
-               id: districtCd,
-               name: districtName
-             });
-           }
+            grouped[categoryIdentifier].district_cds.push({
+              id: districtCd,
+              name: districtName
+            });
+          }
         }
 
         grouped[categoryIdentifier].total_students += Number(row.total_students || 0);
@@ -1125,6 +1123,8 @@ const getSubjectByUdise = async (req, res) => {
   try {
     const { class_level, udise_sch_code } = req.body;
 
+
+
     if (!class_level || !udise_sch_code) {
       return res.status(400).json({
         success: false,
@@ -1160,6 +1160,8 @@ const getSubjectByUdise = async (req, res) => {
     );
 
     const students = studentResult.rows[0]?.students ?? 0;
+
+    console.log(subjectResult.rows, "subjectResult.rows");
 
     return res.status(200).json({
       success: true,

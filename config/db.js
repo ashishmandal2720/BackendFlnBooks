@@ -33,4 +33,4 @@ async function checkDbStatus() {
 
 
 
-module.exports = { pool, connectDB,checkDbStatus };
+module.exports = { pool, connectDB, checkDbStatus };

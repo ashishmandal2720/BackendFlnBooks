@@ -9,7 +9,7 @@ const createDatabaseIfNotExists = async () => {
   const client = new Client({
     user: process.env.DB_USER,
     host: process.env.DB_HOST,
-    database: 'fln_books', // must connect to default DB
+    database: process.env.DB_NAME,
     password: process.env.DB_PASS,
     port: process.env.DB_PORT,
   });
