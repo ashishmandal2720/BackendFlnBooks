@@ -81,9 +81,6 @@ const allowedOrigins = [
     const router = require('./routes/router');
 
     app.use('/api/v3', router);
-    app.use('/api/v2', router);
-    app.use('/api/v1', router);
-    app.use('/api/v2/test', statusRoutes);
     app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerJson, swaggerOptions));
 
     // Start Server
