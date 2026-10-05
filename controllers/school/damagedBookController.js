@@ -1,116 +1,214 @@
 const { pool } = require('../../config/db');
 const responseHandler = require('../../utils/responseHandler');
 
-const createDamageReport = async (req, res) => {
+const saveOrUpdateDamageReports = async (req, res, isUpdate = false) => {
   /* #swagger.tags = ['School Mobile Api'] */
   /* #swagger.security = [{ "Bearer": [] }] */
   try {
-    const user_id = req.user.user_id;
-    const { book_id, udise_code, damaged_qty, reason } = req.body;
-
-    if (!book_id) {
-      return responseHandler(res, 400, 'Missing required field: Book ID');
-    }
-    if (!udise_code) {
-      return responseHandler(res, 400, 'Missing required field: UDISE Code');
-    }
-    if (!damaged_qty) {
-      return responseHandler(res, 400, 'Missing required field: Damaged Quantity');
+    const user_id = req.user?.user_id;
+    if (!user_id) {
+      return responseHandler(res, 401, 'Unauthorized: User not found in session');
     }
 
-    const assignedRes = await pool.query(
-      `SELECT COALESCE(SUM(quantity),0) AS qty
-       FROM tbc_school_challan_books
-       WHERE book_id = $1 AND udise_code = $2`,
-      [book_id, udise_code]
-    );
-    const assignedQty = parseInt(assignedRes.rows[0].qty, 10) || 0;
-
-    const currentRes = await pool.query(
-      `SELECT COALESCE(SUM(damaged_qty),0) AS qty
-       FROM tbc_damaged_books
-       WHERE book_id = $1 AND udise_code = $2 AND user_id != $3`,
-      [book_id, udise_code, user_id]
-    );
-    const currentQty = parseInt(currentRes.rows[0].qty, 10) || 0;
-
-    if (parseInt(damaged_qty, 10) < 0) {
-      return responseHandler(res, 400, 'Damage book quantity can not be negative');
+    let reportList = [];
+    if (Array.isArray(req.body)) {
+      reportList = req.body;
+    } else if (Array.isArray(req.body?.reports)) {
+      reportList = req.body.reports;
+    } else if (Array.isArray(req.body?.books)) {
+      reportList = req.body.books;
+    } else if (req.body && typeof req.body === 'object') {
+      reportList = [req.body];
     }
 
-    if (currentQty + parseInt(damaged_qty, 10) > assignedQty) {
-      return responseHandler(res, 400, 'Damage book quantity can not be Higher than total quantity');
+    if (!reportList || reportList.length === 0) {
+      return responseHandler(res, 400, 'Damage report data is required');
     }
 
-    await pool.query(
-      `INSERT INTO tbc_damaged_books (book_id, udise_code, user_id, damaged_qty, reason)
-       VALUES ($1, $2, $3, $4, $5)
-       ON CONFLICT (book_id, udise_code, user_id) DO UPDATE
-       SET damaged_qty = EXCLUDED.damaged_qty, reason = EXCLUDED.reason, updated_at = CURRENT_TIMESTAMP`,
-      [book_id, udise_code, user_id, damaged_qty, reason]
-    );
+    // Determine default udise_code
+    let defaultUdise =
+      req.body?.udise_code ??
+      req.body?.udisecode ??
+      req.body?.udise ??
+      req.query?.udise_code ??
+      req.query?.udisecode ??
+      req.query?.udise;
 
-    responseHandler(res, 200, 'Damage report saved');
+    if (!defaultUdise && reportList.length > 0) {
+      defaultUdise = reportList[0]?.udise_code ?? reportList[0]?.udisecode ?? reportList[0]?.udise;
+    }
+
+    if (!defaultUdise && user_id) {
+      const userRes = await pool.query(
+        'SELECT column_value FROM mst_users WHERE user_id = $1',
+        [user_id]
+      );
+      if (userRes.rows.length && userRes.rows[0].column_value) {
+        const colVal = String(userRes.rows[0].column_value).trim();
+        if (colVal.length === 11 && /^\d+$/.test(colVal)) {
+          defaultUdise = colVal;
+        } else {
+          const tchRes = await pool.query(
+            'SELECT current_udise_id, udise_id FROM mst_teacher WHERE teacher_code = $1 LIMIT 1',
+            [colVal]
+          );
+          if (tchRes.rows.length) {
+            defaultUdise = tchRes.rows[0].current_udise_id || tchRes.rows[0].udise_id;
+          }
+        }
+      }
+    }
+
+    for (const item of reportList) {
+      // Resolve book ID (supports b_id, book_id, id, and challan book id)
+      let rawBookId =
+        item.b_id != null
+          ? item.b_id
+          : item.book_id != null
+          ? item.book_id
+          : item.id != null
+          ? item.id
+          : req.params?.book_id || req.params?.id;
+
+      let finalBookId = rawBookId != null ? parseInt(rawBookId, 10) : null;
+
+      if (finalBookId) {
+        const bookCheck = await pool.query('SELECT id FROM tbc_books WHERE id = $1', [finalBookId]);
+        if (bookCheck.rows.length === 0) {
+          // Check if rawBookId is a challan book ID (tbc_school_challan_books.id)
+          const challanCheck = await pool.query(
+            'SELECT book_id FROM tbc_school_challan_books WHERE id = $1',
+            [finalBookId]
+          );
+          if (challanCheck.rows.length > 0) {
+            finalBookId = challanCheck.rows[0].book_id;
+          } else if (item.subject_id) {
+            const subjCheck = await pool.query(
+              'SELECT id FROM tbc_books WHERE subject_id = $1 LIMIT 1',
+              [item.subject_id]
+            );
+            if (subjCheck.rows.length > 0) {
+              finalBookId = subjCheck.rows[0].id;
+            }
+          }
+        }
+      } else if (item.subject_id) {
+        const subjCheck = await pool.query(
+          'SELECT id FROM tbc_books WHERE subject_id = $1 LIMIT 1',
+          [item.subject_id]
+        );
+        if (subjCheck.rows.length > 0) {
+          finalBookId = subjCheck.rows[0].id;
+        }
+      }
+
+      if (!finalBookId) {
+        return responseHandler(res, 400, 'Missing required field: Book ID');
+      }
+
+      // Resolve UDISE code
+      const udiseCode = String(
+        item.udise_code || item.udisecode || item.udise || defaultUdise || ''
+      ).trim();
+
+      if (!udiseCode) {
+        return responseHandler(res, 400, 'Missing required field: UDISE Code');
+      }
+
+      // Check damaged_qty
+      const rawQty = item.damaged_qty ?? item.qty ?? item.count;
+      if (rawQty === undefined || rawQty === null || rawQty === '') {
+        return responseHandler(res, 400, 'Missing required field: Damaged Quantity');
+      }
+
+      const damagedQty = parseInt(rawQty, 10);
+      if (isNaN(damagedQty) || damagedQty < 0) {
+        return responseHandler(res, 400, 'Damage book quantity can not be negative');
+      }
+
+      // Check existing scan count
+      const existingRes = await pool.query(
+        `SELECT id, scan_count, damaged_qty, user_id, reason
+         FROM tbc_damaged_books
+         WHERE book_id = $1 AND udise_code = $2`,
+        [finalBookId, udiseCode]
+      );
+      const totalScanCount = existingRes.rows.reduce(
+        (sum, r) => sum + (parseInt(r.scan_count, 10) || 0),
+        0
+      );
+
+      if (damagedQty < totalScanCount) {
+        return responseHandler(
+          res,
+          400,
+          `Damaged quantity cannot be lower than scanned quantity (${totalScanCount})`
+        );
+      }
+
+      // Check assigned and received quantities
+      const assignedRes = await pool.query(
+        `SELECT COALESCE(SUM(quantity), 0) AS qty,
+                COALESCE(SUM(received_qty), 0) AS rcv_qty
+         FROM tbc_school_challan_books
+         WHERE book_id = $1 AND udise_code = $2`,
+        [finalBookId, udiseCode]
+      );
+      const assignedQty = parseInt(assignedRes.rows[0]?.qty, 10) || 0;
+      const receivedQty = parseInt(assignedRes.rows[0]?.rcv_qty, 10) || 0;
+      const maxAllowedQty = Math.max(assignedQty, receivedQty);
+
+      const otherRes = await pool.query(
+        `SELECT COALESCE(SUM(damaged_qty), 0) AS qty
+         FROM tbc_damaged_books
+         WHERE book_id = $1 AND udise_code = $2 AND user_id != $3`,
+        [finalBookId, udiseCode, user_id]
+      );
+      const otherQty = parseInt(otherRes.rows[0]?.qty, 10) || 0;
+
+      if (maxAllowedQty > 0 && otherQty + damagedQty > maxAllowedQty) {
+        return responseHandler(res, 400, 'Damage book quantity can not be Higher than total quantity');
+      }
+
+      const userRow = existingRes.rows.find((r) => r.user_id === user_id);
+      const reason =
+        item.reason !== undefined && item.reason !== null
+          ? item.reason
+          : userRow?.reason || null;
+
+      await pool.query(
+        `INSERT INTO tbc_damaged_books (book_id, udise_code, user_id, damaged_qty, reason)
+         VALUES ($1, $2, $3, $4, $5)
+         ON CONFLICT (book_id, udise_code, user_id) DO UPDATE
+         SET damaged_qty = EXCLUDED.damaged_qty,
+             reason = COALESCE(EXCLUDED.reason, tbc_damaged_books.reason),
+             updated_at = CURRENT_TIMESTAMP`,
+        [finalBookId, udiseCode, user_id, damagedQty, reason]
+      );
+
+      if (existingRes.rows.length > 1) {
+        await mergeDuplicateDamagedBooks(udiseCode, finalBookId);
+      }
+    }
+
+    const successMessage = isUpdate ? 'Damage report updated successfully' : 'Damage report saved';
+    return responseHandler(res, 200, successMessage);
   } catch (error) {
-    console.error('Error saving damage report:', error);
-    responseHandler(res, 500, 'Error saving damage report', null, error.message);
+    console.error('Error in saveOrUpdateDamageReports:', error);
+    return responseHandler(res, 500, 'Error saving damage report', null, error.message);
   }
 };
 
+const createDamageReport = async (req, res) => {
+  return saveOrUpdateDamageReports(req, res, false);
+};
+
+const editDamageReport = async (req, res) => {
+  return saveOrUpdateDamageReports(req, res, true);
+};
+
 const createDamageReportBulk = async (req, res) => {
-  /* #swagger.tags = ['School Mobile Api'] */
-  /* #swagger.security = [{ "Bearer": [] }] */
-  try {
-    const user_id = req.user.user_id;
-    const { reports } = req.body;
-
-    if (!Array.isArray(reports) || !reports.length) {
-      return responseHandler(res, 400, 'Reports array is required');
-    }
-
-    const insertPromises = [];
-    for (const rep of reports) {
-      const { book_id, udise_code, damaged_qty, reason } = rep;
-      if (!book_id || !udise_code || !damaged_qty) {
-        return responseHandler(res, 400, 'Missing fields in one of the reports');
-      }
-
-      const assignedRes = await pool.query(
-        `SELECT COALESCE(SUM(quantity),0) AS qty
-         FROM tbc_school_challan_books
-         WHERE book_id = $1 AND udise_code = $2`,
-        [book_id, udise_code]
-      );
-      const assignedQty = parseInt(assignedRes.rows[0].qty, 10) || 0;
-
-      const currentRes = await pool.query(
-        `SELECT COALESCE(SUM(damaged_qty),0) AS qty
-         FROM tbc_damaged_books
-         WHERE book_id = $1 AND udise_code = $2 AND user_id != $3`,
-        [book_id, udise_code, user_id]
-      );
-      const currentQty = parseInt(currentRes.rows[0].qty, 10) || 0;
-
-      if (currentQty + parseInt(damaged_qty, 10) > assignedQty) {
-        return responseHandler(res, 400, 'Damage book quantity can not be Higher than total quantity');
-      }
-      insertPromises.push(
-        pool.query(
-          `INSERT INTO tbc_damaged_books (book_id, udise_code, user_id, damaged_qty, reason)
-           VALUES ($1, $2, $3, $4, $5)
-           ON CONFLICT (book_id, udise_code, user_id) DO UPDATE
-           SET damaged_qty = EXCLUDED.damaged_qty, reason = EXCLUDED.reason, updated_at = CURRENT_TIMESTAMP`,
-          [book_id, udise_code, user_id, damaged_qty, reason]
-        )
-      );
-    }
-
-    await Promise.all(insertPromises);
-
-    responseHandler(res, 200, 'Damage reports saved');
-  } catch (error) {
-    responseHandler(res, 500, 'Error saving damage reports', null, error.message);
-  }
+  return saveOrUpdateDamageReports(req, res, false);
 };
 
 const mergeDuplicateDamagedBooks = async (udise, bookId) => {
@@ -359,4 +457,10 @@ const getSubjectWiseStd2Damage = async (req, res) => {
   }
 };
 
-module.exports = { createDamageReport, scanDamagedBook, createDamageReportBulk, getSubjectWiseStd2Damage };
+module.exports = {
+  createDamageReport,
+  editDamageReport,
+  scanDamagedBook,
+  createDamageReportBulk,
+  getSubjectWiseStd2Damage
+};

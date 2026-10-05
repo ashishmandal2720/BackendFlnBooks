@@ -41,6 +41,7 @@ const {
 
 const {
     createDamageReport,
+    editDamageReport,
     scanDamagedBook,
     createDamageReportBulk,
     getSubjectWiseStd2Damage
@@ -78,10 +79,13 @@ const {
     router.post("/getTbcBookdata",authenticate, checkRole(['School','Teacher','PrivateTeacher']), getTbcBookdata);
     router.post("/getSubjectByUdise", getSubjectByUdise);
 
-    router.post('/damage/report', authenticate, checkRole(['School','Teacher','PrivateTeacher']), createDamageReport);
-    router.post('/damage/scan', authenticate, checkRole(['School','Teacher','PrivateTeacher']), scanDamagedBook);
-    router.post('/damage/bulk', authenticate, checkRole(['School','Teacher','PrivateTeacher']), createDamageReportBulk);
-    router.post('/damage/list', authenticate, checkRole(['School','Teacher','PrivateTeacher']), getSubjectWiseStd2Damage);
+    router.post('/damage/report', authenticate, checkRole(['School','Schools','Teacher','PrivateTeacher','Admin']), createDamageReport);
+    router.put('/damage/report', authenticate, checkRole(['School','Schools','Teacher','PrivateTeacher','Admin']), editDamageReport);
+    router.put('/damage/report/:id', authenticate, checkRole(['School','Schools','Teacher','PrivateTeacher','Admin']), editDamageReport);
+    router.post('/damage/scan', authenticate, checkRole(['School','Schools','Teacher','PrivateTeacher','Admin']), scanDamagedBook);
+    router.post('/damage/bulk', authenticate, checkRole(['School','Schools','Teacher','PrivateTeacher','Admin']), createDamageReportBulk);
+    router.put('/damage/bulk', authenticate, checkRole(['School','Schools','Teacher','PrivateTeacher','Admin']), editDamageReport);
+    router.post('/damage/list', authenticate, checkRole(['School','Schools','Teacher','PrivateTeacher','Admin']), getSubjectWiseStd2Damage);
 
 
 module.exports = router;
