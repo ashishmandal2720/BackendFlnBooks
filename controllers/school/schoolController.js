@@ -1161,8 +1161,6 @@ const getSubjectByUdise = async (req, res) => {
 
     const students = studentResult.rows[0]?.students ?? 0;
 
-    console.log(subjectResult.rows, "subjectResult.rows");
-
     return res.status(200).json({
       success: true,
       udise_sch_code,

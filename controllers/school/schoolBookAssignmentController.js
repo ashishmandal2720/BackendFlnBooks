@@ -307,7 +307,7 @@ const confirmSchoolBookReceipt = async (req, res) => {
     const teacher_id = req.user.user_id;
     const { books, udise_code } = req.body;
 
-    console.log("Received books:", books, "for udise_code:", udise_code);
+    // console.log("Received books:", books, "for udise_code:", udise_code);
 
 
     if (!books?.length || !udise_code) {
@@ -819,9 +819,8 @@ const updateTeacherReceivedQty = async (req, res) => {
       if (rawQty == null || isNaN(Number(rawQty)) || Number(rawQty) < 0) {
         return res.status(400).json({
           success: false,
-          message: `Invalid quantity provided for subject/book: ${
-            item.subject_id ?? item.book_id ?? item.id ?? 'unknown'
-          }.`
+          message: `Invalid quantity provided for subject/book: ${item.subject_id ?? item.book_id ?? item.id ?? 'unknown'
+            }.`
         });
       }
       const newQty = parseInt(rawQty, 10);
@@ -832,8 +831,8 @@ const updateTeacherReceivedQty = async (req, res) => {
         item.b_id != null
           ? Number(item.b_id)
           : item.book_id != null
-          ? Number(item.book_id)
-          : null;
+            ? Number(item.book_id)
+            : null;
       const targetChallanBookId =
         item.challan_book_id != null
           ? Number(item.challan_book_id)
@@ -983,18 +982,16 @@ const updateTeacherReceivedQty = async (req, res) => {
       if (newQty < scanCount) {
         return res.status(400).json({
           success: false,
-          message: `New quantity (${newQty}) cannot be less than scanned books count (${scanCount}) for subject ${
-            finalSubjectId || finalBookId || item.subject_id || item.book_id
-          }.`
+          message: `New quantity (${newQty}) cannot be less than scanned books count (${scanCount}) for subject ${finalSubjectId || finalBookId || item.subject_id || item.book_id
+            }.`
         });
       }
 
       if (newQty < totalDistributed) {
         return res.status(400).json({
           success: false,
-          message: `New quantity (${newQty}) cannot be less than already distributed books (${totalDistributed}) for subject ${
-            finalSubjectId || finalBookId || item.subject_id || item.book_id
-          }.`
+          message: `New quantity (${newQty}) cannot be less than already distributed books (${totalDistributed}) for subject ${finalSubjectId || finalBookId || item.subject_id || item.book_id
+            }.`
         });
       }
 

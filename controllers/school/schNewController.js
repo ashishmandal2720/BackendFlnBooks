@@ -335,6 +335,15 @@ const getSubjectWiseStd2 = async (req, res) => {
         GROUP BY subject_id
       ),
 
+      damage_cte AS (
+        SELECT
+          book_id,
+          COALESCE(SUM(damaged_qty), 0)::int AS damaged_qty
+        FROM tbc_damaged_books
+        WHERE udise_code::text = $2::text
+        GROUP BY book_id
+      ),
+
       challan_cte AS (
         SELECT
           subject_id,
@@ -375,10 +384,12 @@ const getSubjectWiseStd2 = async (req, res) => {
         ac.total_quantity AS quantity,
         ac.received_status AS received_status,
         ac.book_id,
-        ac.b_id
+        ac.b_id,
+        COALESCE(dc.damaged_qty, 0)::int AS damage_book_count
       FROM subject_list sl
       LEFT JOIN tracking_cte tc ON tc.subject_id = sl.subject_id
       INNER JOIN aggregated_challan ac ON ac.subject_id = sl.subject_id
+      LEFT JOIN damage_cte dc ON dc.book_id = ac.b_id
       ORDER BY sl.subject_id
       `,
       [class_level, udise_code]
